@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>미적분Ⅰ 부교재 질문 수합</title>
+  <!-- Tailwind CSS v3 CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS (xlsx) CDN -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <!-- Pretendard Font -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col items-center justify-center p-3 sm:p-6 font-sans antialiased">
+
+  <!-- 메인 앱 컨테이너 -->
+  <main class="w-full max-w-2xl bg-white rounded-3xl shadow-xl shadow-slate-200/70 border border-slate-200 overflow-hidden">
+
+    <!-- 상단 헤더 -->
+    <header class="bg-indigo-600 text-white px-5 py-5 sm:px-7 sm:py-6 flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <h1 class="text-lg sm:text-xl font-bold tracking-tight truncate">미적분Ⅰ 부교재 질문</h1>
+        <p class="text-indigo-100 text-xs sm:text-sm mt-0.5">어려운 문제를 등록하면 수업 시간에 함께 풀이합니다.</p>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="btnLogout" type="button" class="hidden text-xs sm:text-sm bg-rose-500/90 hover:bg-rose-500 active:scale-95 px-3 py-2 rounded-xl font-semibold transition">
+          로그아웃
+        </button>
+        <button id="btnHome" type="button" class="hidden text-xs sm:text-sm bg-indigo-500 hover:bg-indigo-400 active:scale-95 px-3.5 py-2 rounded-xl font-semibold transition">
+          처음으로
+        </button>
+      </div>
+    </header>
+
+    <!-- [화면 1] 시작 화면 -->
+    <section id="viewHome" class="p-6 sm:p-8 flex flex-col gap-4">
+      <button id="goStudentBtn" type="button" class="w-full py-5 px-6 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white rounded-2xl font-bold text-base sm:text-lg shadow-md shadow-indigo-200 transition flex items-center justify-between gap-3">
+        <span>✏️ 미적분Ⅰ 부교재 질문하기</span>
+        <span class="text-indigo-100 text-xs sm:text-sm font-medium shrink-0">학생용 →</span>
+      </button>
+
+      <button id="goTeacherLoginBtn" type="button" class="w-full py-5 px-6 bg-slate-100 hover:bg-slate-200 active:scale-[0.99] text-slate-800 rounded-2xl font-bold text-base sm:text-lg border border-slate-200 transition flex items-center justify-between gap-3">
+        <span>📋 질문 확인하기</span>
+        <span class="text-slate-500 text-xs sm:text-sm font-medium shrink-0">교사용 →</span>
+      </button>
+    </section>
+
+    <!-- [화면 2] 학생 질문 입력 화면 -->
+    <section id="viewStudent" class="hidden p-5 sm:p-7 space-y-6">
+      <!-- 1. 반 선택 (1반 ~ 9반) -->
+      <div>
+        <div class="flex items-center justify-between mb-2.5">
+          <label class="text-sm font-bold text-slate-800">1. 자신의 반을 선택하세요</label>
+          <span id="selectedClassBadge" class="hidden text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg"></span>
+        </div>
+        <div id="classSelector" class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          <!-- JS로 1~9반 버튼 동적 생성 -->
+        </div>
+      </div>
+
+      <!-- 2. 동적 문제 입력 리스트 -->
+      <div>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2.5">
+          <label class="text-sm font-bold text-slate-800">2. 질문할 문제의 페이지와 문항번호를 입력하세요</label>
+          <span class="text-[11px] text-slate-500">1 이상의 자연수만 입력 (예: 42 / 15)</span>
+        </div>
+
+        <!-- 입력 검증 경고 박스 -->
+        <div id="studentValidationAlert" role="alert" class="hidden mb-3 p-3.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 text-xs sm:text-sm font-semibold flex items-start gap-2">
+          <span class="shrink-0">⚠️</span>
+          <span id="studentValidationAlertText">페이지와 문제번호를 다시 확인해 주세요. (1 이상의 자연수만 입력 가능합니다.)</span>
+        </div>
+
+        <div id="questionRows" class="space-y-2.5">
+          <!-- JS로 입력 행 동적 생성 -->
+        </div>
+
+        <button id="addRowBtn" type="button" class="mt-3 w-full py-3 border-2 border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 active:scale-[0.99] rounded-xl font-bold text-sm transition">
+          + 추가 질문하기
+        </button>
+      </div>
+
+      <!-- 3. 제출 버튼 -->
+      <div class="pt-1">
+        <button id="submitQuestionsBtn" type="button" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white rounded-2xl font-bold text-base shadow-md shadow-indigo-200 transition disabled:opacity-50 disabled:cursor-not-allowed">
+          질문하기 완료
+        </button>
+      </div>
+    </section>
+
+    <!-- [화면 3] 교사 비밀번호 로그인 화면 -->
+    <section id="viewLogin" class="hidden p-7 sm:p-9 space-y-5">
+      <div class="text-center">
+        <h2 class="text-lg font-bold text-slate-800">교사 확인 로그인</h2>
+        <p class="text-sm text-slate-500 mt-1">비밀번호를 입력해 주세요.</p>
+      </div>
+
+      <div class="max-w-xs mx-auto space-y-3">
+        <input id="passwordInput" type="password" inputmode="numeric" autocomplete="off" placeholder="비밀번호 입력"
+          class="w-full px-4 py-3.5 text-center text-lg font-semibold tracking-[0.25em] border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <p id="loginError" class="hidden text-center text-xs text-rose-600 font-semibold">비밀번호가 올바르지 않습니다.</p>
+        <button id="loginSubmitBtn" type="button" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-100 transition">
+          로그인
+        </button>
+      </div>
+    </section>
+
+    <!-- [화면 4] 교사 실시간 질문 확인 대시보드 -->
+    <section id="viewTeacher" class="hidden p-5 sm:p-7 space-y-5">
+      <!-- Firestore 권한/연결 오류 안내 배너 -->
+      <div id="firestoreErrorBanner" class="hidden bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-4 text-xs leading-relaxed">
+        <p class="font-bold text-rose-900 mb-1">⚠️ Firestore 데이터베이스 연결 오류</p>
+        <p id="firestoreErrorDetail">Firebase 콘솔의 [Firestore Database &gt; 규칙]에서 calculus1_questions 컬렉션의 읽기/쓰기 권한이 허용되어 있는지 확인해 주세요.</p>
+      </div>
+
+      <!-- 선생님 선택 탭 -->
+      <div>
+        <div class="flex items-center justify-between mb-2 gap-2">
+          <label class="text-xs font-bold text-slate-500">담당 선생님 선택</label>
+          <span id="connectionBadge" class="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full">
+            <span id="connectionDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            <span id="connectionText">연결 중...</span>
+          </span>
+        </div>
+        <div id="teacherTabs" class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <!-- JS로 선생님 탭 동적 생성 -->
+        </div>
+      </div>
+
+      <!-- 엑셀 다운로드 영역 -->
+      <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div class="text-xs font-bold text-emerald-900">엑셀 다운로드 (.xlsx)</div>
+          <div id="excelDesc" class="text-[11px] text-emerald-700 mt-0.5">질문집계 + 원본내역 시트 포함</div>
+        </div>
+        <button id="downloadExcelBtn" type="button" class="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition shrink-0">
+          <span id="downloadExcelLabel">윤원석T 전체 엑셀 다운로드</span>
+        </button>
+      </div>
+
+      <!-- 담당 반 세부 필터 및 정렬 -->
+      <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+        <div id="subClassFilter" class="flex flex-wrap gap-1.5">
+          <!-- JS로 담당 반 필터 버튼 생성 -->
+        </div>
+        <div class="ml-auto flex items-center gap-2">
+          <select id="sortSelect" aria-label="정렬 기준" class="text-xs font-semibold border border-slate-300 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="count">질문 많은 순</option>
+            <option value="page">페이지·번호 순</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 요약 카운트 및 목록 비우기 -->
+      <div class="flex flex-wrap items-center justify-between gap-2 text-xs px-1">
+        <div class="flex items-center gap-2">
+          <span id="filterStatusText" class="text-slate-500 font-medium">담당 반 전체</span>
+          <span class="text-slate-300">|</span>
+          <span id="summaryCount" class="font-bold text-slate-700">문제 0종 (총 0건)</span>
+        </div>
+        <button id="clearFilteredBtn" type="button" class="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 transition disabled:opacity-40 disabled:cursor-not-allowed">
+          목록 비우기
+        </button>
+      </div>
+
+      <!-- 집계된 질문 카드 목록 -->
+      <div id="questionList" class="space-y-2.5 max-h-[52vh] overflow-y-auto pr-1">
+        <!-- JS로 질문 카드 렌더링 -->
+      </div>
+    </section>
+  </main>
+
+  <!-- 교사 삭제용 비밀번호 확인 커스텀 모달 -->
+  <div id="deleteAuthModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+    <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 space-y-4">
+      <div>
+        <h3 id="deleteModalTitle" class="text-base font-bold text-slate-800">삭제 확인</h3>
+        <p id="deleteModalMessage" class="text-sm text-slate-600 mt-1.5 leading-relaxed whitespace-pre-line"></p>
+      </div>
+
+      <div class="space-y-1.5">
+        <label for="deletePasswordInput" class="block text-xs font-bold text-slate-600">삭제를 진행하려면 교사 비밀번호를 다시 입력하세요</label>
+        <input id="deletePasswordInput" type="password" inputmode="numeric" autocomplete="off" placeholder="비밀번호 입력"
+          class="w-full px-3.5 py-2.5 text-center text-base font-semibold tracking-[0.2em] border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500" />
+        <p id="deletePasswordError" class="hidden text-xs text-rose-600 font-semibold text-center">비밀번호가 올바르지 않습니다. 다시 입력해 주세요.</p>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <button id="deleteCancelBtn" type="button" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition">
+          취소
+        </button>
+        <button id="deleteConfirmBtn" type="button" class="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold transition disabled:opacity-50">
+          삭제 실행
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 알림 -->
+  <div id="toast" role="status" aria-live="polite" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl opacity-0 pointer-events-none transition-opacity duration-300 whitespace-nowrap max-w-[92vw] truncate">
+    메시지
+  </div>
+
+  <!-- Firebase v10.12.2 Modular SDK 및 앱 로직 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      onSnapshot,
+      query,
+      orderBy,
+      serverTimestamp,
+      writeBatch,
+      doc
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // =========================================================================
+    // Firebase 프로젝트 설정
+    // =========================================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyDiC22u_TEVNXPDC58o1uh1VpqFQ7jlW7o",
+      authDomain: "question-c938b.firebaseapp.com",
+      projectId: "question-c938b",
+      storageBucket: "question-c938b.firebasestorage.app",
+      messagingSenderId: "661064627221",
+      appId: "1:661064627221:web:eb8a400126b76364430a1c"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const COLLECTION_NAME = "calculus1_questions";
+    const TEACHER_PASSWORD = "18128";
+    const NATURAL_NUMBER_REGEX = /^[1-9]\d*$/;
+    const VALIDATION_ERROR_MSG = "페이지와 문제번호를 다시 확인해 주세요. (1 이상의 자연수만 입력 가능합니다.)";
+
+    // 선생님별 담당 반 정보
+    const TEACHERS = [
+      { id: "yoon", name: "윤원석", label: "윤원석 T", classes: [1, 2] },
+      { id: "jeong", name: "정혜린", label: "정혜린 T", classes: [3, 5] },
+      { id: "min", name: "민선영", label: "민선영 T", classes: [4, 6] },
+      { id: "lee", name: "이창호", label: "이창호 T", classes: [7, 8, 9] }
+    ];
+
+    // 앱 상태 변수
+    let selectedClass = null;
+    let selectedTeacherId = TEACHERS[0].id;
+    let selectedSubClass = "ALL";
+    let allQuestions = [];
+    let unsubscribe = null;
+    let pendingDeleteAction = null;
+    let toastTimer = null;
+
+    // DOM 요소 참조
+    const views = {
+      home: document.getElementById("viewHome"),
+      student: document.getElementById("viewStudent"),
+      login: document.getElementById("viewLogin"),
+      teacher: document.getElementById("viewTeacher")
+    };
+    const btnHome = document.getElementById("btnHome");
+    const btnLogout = document.getElementById("btnLogout");
+    const classSelector = document.getElementById("classSelector");
+    const selectedClassBadge = document.getElementById("selectedClassBadge");
+    const studentValidationAlert = document.getElementById("studentValidationAlert");
+    const studentValidationAlertText = document.getElementById("studentValidationAlertText");
+    const questionRows = document.getElementById("questionRows");
+    const addRowBtn = document.getElementById("addRowBtn");
+    const submitQuestionsBtn = document.getElementById("submitQuestionsBtn");
+    const passwordInput = document.getElementById("passwordInput");
+    const loginError = document.getElementById("loginError");
+    const teacherTabs = document.getElementById("teacherTabs");
+    const subClassFilter = document.getElementById("subClassFilter");
+    const sortSelect = document.getElementById("sortSelect");
+    const questionList = document.getElementById("questionList");
+    const summaryCount = document.getElementById("summaryCount");
+    const filterStatusText = document.getElementById("filterStatusText");
+    const clearFilteredBtn = document.getElementById("clearFilteredBtn");
+    const downloadExcelBtn = document.getElementById("downloadExcelBtn");
+    const downloadExcelLabel = document.getElementById("downloadExcelLabel");
+    const excelDesc = document.getElementById("excelDesc");
+    const firestoreErrorBanner = document.getElementById("firestoreErrorBanner");
+    const firestoreErrorDetail = document.getElementById("firestoreErrorDetail");
+    const connectionBadge = document.getElementById("connectionBadge");
+    const connectionDot = document.getElementById("connectionDot");
+    const connectionText = document.getElementById("connectionText");
+
+    // 삭제 비밀번호 확인 모달 요소
+    const deleteAuthModal = document.getElementById("deleteAuthModal");
+    const deleteModalTitle = document.getElementById("deleteModalTitle");
+    const deleteModalMessage = document.getElementById("deleteModalMessage");
+    const deletePasswordInput = document.getElementById("deletePasswordInput");
+    const deletePasswordError = document.getElementById("deletePasswordError");
+    const deleteCancelBtn = document.getElementById("deleteCancelBtn");
+    const deleteConfirmBtn = document.getElementById("deleteConfirmBtn");
+
+    const toast = document.getElementById("toast");
+
+    // =========================================================================
+    // 유틸리티 함수
+    // =========================================================================
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function isNaturalNumber(str) {
+      return NATURAL_NUMBER_REGEX.test(str);
+    }
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.remove("opacity-0");
+      toast.classList.add("opacity-100");
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove("opacity-100");
+        toast.classList.add("opacity-0");
+      }, 3000);
+    }
+
+    function setInputErrorStyle(inputEl, hasError) {
+      if (hasError) {
+        inputEl.classList.remove("border-slate-300", "focus:ring-indigo-500");
+        inputEl.classList.add("border-rose-500", "ring-2", "ring-rose-200", "focus:ring-rose-500");
+      } else {
+        inputEl.classList.remove("border-rose-500", "ring-2", "ring-rose-200", "focus:ring-rose-500");
+        inputEl.classList.add("border-slate-300", "focus:ring-indigo-500");
+      }
+    }
+
+    function showStudentValidationAlert(msg) {
+      studentValidationAlertText.textContent = msg;
+      studentValidationAlert.classList.remove("hidden");
+    }
+
+    function hideStudentValidationAlert() {
+      studentValidationAlert.classList.add("hidden");
+    }
+
+    // =========================================================================
+    // 삭제 비밀번호 확인 커스텀 모달 제어
+    // =========================================================================
+    function openDeleteAuthModal({ title, message, okText = "삭제 실행", onConfirm }) {
+      deleteModalTitle.textContent = title;
+      deleteModalMessage.textContent = message;
+      deleteConfirmBtn.textContent = okText;
+      deletePasswordInput.value = "";
+      deletePasswordError.classList.add("hidden");
+      deleteConfirmBtn.disabled = false;
+      pendingDeleteAction = onConfirm;
+      deleteAuthModal.classList.remove("hidden");
+      setTimeout(() => deletePasswordInput.focus(), 50);
+    }
+
+    function closeDeleteAuthModal() {
+      deleteAuthModal.classList.add("hidden");
+      deletePasswordInput.value = "";
+      deletePasswordError.classList.add("hidden");
+      pendingDeleteAction = null;
+    }
+
+    async function handleDeleteConfirm() {
+      const entered = deletePasswordInput.value.trim();
+      if (entered !== TEACHER_PASSWORD) {
+        deletePasswordError.classList.remove("hidden");
+        deletePasswordInput.focus();
+        deletePasswordInput.select();
+        return;
+      }
+
+      if (!pendingDeleteAction) {
+        closeDeleteAuthModal();
+        return;
+      }
+
+      const action = pendingDeleteAction;
+      deleteConfirmBtn.disabled = true;
+      deleteConfirmBtn.textContent = "삭제 중...";
+
+      try {
+        await action();
+        closeDeleteAuthModal();
+      } catch (err) {
+        console.error("삭제 실행 오류:", err);
+        showToast("삭제 중 오류가 발생했습니다.");
+        deleteConfirmBtn.disabled = false;
+        deleteConfirmBtn.textContent = "삭제 실행";
+      }
+    }
+
+    deleteCancelBtn.addEventListener("click", closeDeleteAuthModal);
+    deleteAuthModal.addEventListener("click", (e) => {
+      if (e.target === deleteAuthModal) closeDeleteAuthModal();
+    });
+    deleteConfirmBtn.addEventListener("click", handleDeleteConfirm);
+    deletePasswordInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleDeleteConfirm();
+    });
+    deletePasswordInput.addEventListener("input", () => {
+      deletePasswordError.classList.add("hidden");
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !deleteAuthModal.classList.contains("hidden")) {
+        closeDeleteAuthModal();
+      }
+    });
+
+    /**
+     * Firestore 450건 단위 배치 삭제 (Firestore 단일 배치 최대 500건 제한 대응)
+     */
+    async function deleteDocIdsInBatches(docIds) {
+      const CHUNK_SIZE = 450;
+      for (let i = 0; i < docIds.length; i += CHUNK_SIZE) {
+        const chunk = docIds.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
+        chunk.forEach(id => batch.delete(doc(db, COLLECTION_NAME, id)));
+        await batch.commit();
+      }
+    }
+
+    function setConnectionStatus(status) {
+      if (status === "connected") {
+        connectionBadge.className = "inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full";
+        connectionDot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+        connectionText.textContent = "실시간 연동 중";
+      } else if (status === "error") {
+        connectionBadge.className = "inline-flex items-center gap-1.5 text-xs font-semibold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full";
+        connectionDot.className = "w-2 h-2 rounded-full bg-rose-500";
+        connectionText.textContent = "연결 오류";
+      } else {
+        connectionBadge.className = "inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full";
+        connectionDot.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
+        connectionText.textContent = "연결 중...";
+      }
+    }
+
+    // =========================================================================
+    // 화면 전환
+    // =========================================================================
+    function showView(name) {
+      Object.values(views).forEach(v => v.classList.add("hidden"));
+      views[name].classList.remove("hidden");
+      btnHome.classList.toggle("hidden", name === "home");
+      btnLogout.classList.toggle("hidden", name !== "teacher");
+
+      if (name === "teacher") {
+        startRealtimeListener();
+      } else {
+        stopRealtimeListener();
+      }
+    }
+
+    // =========================================================================
+    // 학생 화면: 1~9반 선택 및 질문 입력 행 관리
+    // =========================================================================
+    function initClassButtons() {
+      classSelector.innerHTML = "";
+      for (let i = 1; i <= 9; i++) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = `${i}반`;
+        btn.dataset.classNum = String(i);
+        btn.className = "py-2.5 rounded-xl border border-slate-200 font-semibold text-sm bg-white text-slate-700 hover:bg-indigo-50 transition";
+        btn.addEventListener("click", () => {
+          selectedClass = i;
+          updateClassButtonStyles();
+        });
+        classSelector.appendChild(btn);
+      }
+    }
+
+    function updateClassButtonStyles() {
+      if (selectedClass) {
+        selectedClassBadge.textContent = `${selectedClass}반 선택됨`;
+        selectedClassBadge.classList.remove("hidden");
+      } else {
+        selectedClassBadge.classList.add("hidden");
+      }
+
+      Array.from(classSelector.children).forEach(btn => {
+        const isSelected = Number(btn.dataset.classNum) === selectedClass;
+        btn.className = isSelected
+          ? "py-2.5 rounded-xl border-2 border-indigo-600 font-bold text-sm bg-indigo-600 text-white shadow-sm transition"
+          : "py-2.5 rounded-xl border border-slate-200 font-semibold text-sm bg-white text-slate-700 hover:bg-indigo-50 transition";
+      });
+    }
+
+    function addQuestionRow() {
+      const row = document.createElement("div");
+      row.className = "flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200";
+      row.innerHTML = `
+        <div class="flex-1 min-w-0">
+          <input type="text" inputmode="numeric" autocomplete="off" placeholder="페이지 (예: 42)"
+            class="input-page w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+        </div>
+        <div class="flex-1 min-w-0">
+          <input type="text" inputmode="numeric" autocomplete="off" placeholder="문항번호 (예: 15)"
+            class="input-prob w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+        </div>
+        <button type="button" class="remove-row-btn w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 text-lg font-bold transition shrink-0" title="삭제" aria-label="행 삭제">×</button>
+      `;
+
+      const pageInput = row.querySelector(".input-page");
+      const probInput = row.querySelector(".input-prob");
+
+      // 다시 입력할 때 빨간 테두리 해제
+      [pageInput, probInput].forEach(el => {
+        el.addEventListener("input", () => {
+          setInputErrorStyle(el, false);
+        });
+      });
+
+      row.querySelector(".remove-row-btn").addEventListener("click", () => {
+        if (questionRows.children.length > 1) {
+          row.remove();
+        } else {
+          showToast("최소 1개의 질문 칸은 필요합니다.");
+        }
+      });
+
+      questionRows.appendChild(row);
+    }
+
+    function resetStudentForm() {
+      selectedClass = null;
+      updateClassButtonStyles();
+      hideStudentValidationAlert();
+      questionRows.innerHTML = "";
+      addQuestionRow();
+    }
+
+    // 학생 질문 제출 (자연수 엄격 검증 + 중복 제거 + Number 저장)
+    submitQuestionsBtn.addEventListener("click", async () => {
+      hideStudentValidationAlert();
+
+      if (!selectedClass) {
+        showToast("먼저 자신의 반을 선택해 주세요.");
+        return;
+      }
+
+      const rows = Array.from(questionRows.children);
+      const uniqueMap = new Map();
+      let duplicateCount = 0;
+      let hasInvalidInput = false;
+      let firstInvalidInput = null;
+
+      // 모든 행 초기화 후 전수 검사
+      rows.forEach(row => {
+        const pageInput = row.querySelector(".input-page");
+        const probInput = row.querySelector(".input-prob");
+        setInputErrorStyle(pageInput, false);
+        setInputErrorStyle(probInput, false);
+
+        const pageVal = pageInput.value.trim();
+        const probVal = probInput.value.trim();
+
+        // 완전히 비어있는 행은 무시
+        if (pageVal === "" && probVal === "") return;
+
+        const isPageValid = isNaturalNumber(pageVal);
+        const isProbValid = isNaturalNumber(probVal);
+
+        if (!isPageValid) {
+          setInputErrorStyle(pageInput, true);
+          hasInvalidInput = true;
+          if (!firstInvalidInput) firstInvalidInput = pageInput;
+        }
+        if (!isProbValid) {
+          setInputErrorStyle(probInput, true);
+          hasInvalidInput = true;
+          if (!firstInvalidInput) firstInvalidInput = probInput;
+        }
+
+        if (isPageValid && isProbValid) {
+          const pageNum = Number(pageVal);
+          const probNum = Number(probVal);
+          const dedupeKey = `${pageNum}__${probNum}`;
+
+          if (uniqueMap.has(dedupeKey)) {
+            duplicateCount += 1;
+          } else {
+            uniqueMap.set(dedupeKey, {
+              classNum: selectedClass,
+              page: pageNum,
+              problemNum: probNum,
+              createdAt: serverTimestamp()
+            });
+          }
+        }
+      });
+
+      if (hasInvalidInput) {
+        showStudentValidationAlert(VALIDATION_ERROR_MSG);
+        showToast(VALIDATION_ERROR_MSG);
+        if (firstInvalidInput) firstInvalidInput.focus();
+        return;
+      }
+
+      const validItems = Array.from(uniqueMap.values());
+      if (validItems.length === 0) {
+        showStudentValidationAlert("질문할 문제의 페이지와 문항번호를 입력해 주세요. (1 이상의 자연수)");
+        showToast("질문할 문제의 페이지와 문항번호를 입력해 주세요.");
+        return;
+      }
+
+      submitQuestionsBtn.disabled = true;
+      submitQuestionsBtn.textContent = "저장 중...";
+
+      try {
+        await Promise.all(
+          validItems.map(item => addDoc(collection(db, COLLECTION_NAME), item))
+        );
+        if (duplicateCount > 0) {
+          showToast(`중복 입력 ${duplicateCount}건 제외, ${selectedClass}반 질문 ${validItems.length}건이 등록되었습니다!`);
+        } else {
+          showToast(`${selectedClass}반 질문 ${validItems.length}건이 성공적으로 등록되었습니다!`);
+        }
+        resetStudentForm();
+        showView("home");
+      } catch (err) {
+        console.error("Firestore 저장 오류:", err);
+        if (err && err.code === "permission-denied") {
+          showToast("권한 오류: Firestore 보안 규칙(Rules)을 확인해 주세요.");
+        } else {
+          showToast("저장 중 오류가 발생했습니다. 네트워크 또는 Firebase 설정을 확인해 주세요.");
+        }
+      } finally {
+        submitQuestionsBtn.disabled = false;
+        submitQuestionsBtn.textContent = "질문하기 완료";
+      }
+    });
+
+    // =========================================================================
+    // 교사 로그인 / 로그아웃 (비밀번호: 18128, sessionStorage 유지)
+    // =========================================================================
+    function handleLogin() {
+      if (passwordInput.value.trim() === TEACHER_PASSWORD) {
+        sessionStorage.setItem("teacherAuth", "true");
+        loginError.classList.add("hidden");
+        passwordInput.value = "";
+        renderTeacherTabs();
+        renderSubClassFilter();
+        updateExcelButtonUI();
+        showView("teacher");
+      } else {
+        loginError.classList.remove("hidden");
+        passwordInput.select();
+      }
+    }
+
+    function handleLogout() {
+      sessionStorage.removeItem("teacherAuth");
+      stopRealtimeListener();
+      showToast("로그아웃되었습니다.");
+      showView("home");
+    }
+
+    // =========================================================================
+    // 교사 대시보드: 탭, 반별 필터, 실시간 연동, 집계 및 비밀번호 확인 삭제
+    // =========================================================================
+    function getSelectedTeacher() {
+      return TEACHERS.find(t => t.id === selectedTeacherId) || TEACHERS[0];
+    }
+
+    function updateExcelButtonUI() {
+      const teacher = getSelectedTeacher();
+      downloadExcelLabel.textContent = `${teacher.name}T 전체 엑셀 다운로드`;
+      excelDesc.textContent = `${teacher.classes.join("·")}반 전체 질문 (질문집계 + 원본내역 시트)`;
+    }
+
+    function renderTeacherTabs() {
+      teacherTabs.innerHTML = "";
+      TEACHERS.forEach(t => {
+        const isSelected = t.id === selectedTeacherId;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = isSelected
+          ? "py-2.5 px-2 rounded-xl bg-indigo-600 text-white font-bold text-xs sm:text-sm shadow-sm transition"
+          : "py-2.5 px-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold text-xs sm:text-sm transition";
+        btn.innerHTML = `
+          <div>${escapeHtml(t.label)}</div>
+          <div class="text-[11px] ${isSelected ? 'text-indigo-100' : 'text-slate-500'} font-normal mt-0.5">${t.classes.join(", ")}반</div>
+        `;
+        btn.addEventListener("click", () => {
+          selectedTeacherId = t.id;
+          selectedSubClass = "ALL";
+          renderTeacherTabs();
+          renderSubClassFilter();
+          updateExcelButtonUI();
+          renderQuestionList();
+        });
+        teacherTabs.appendChild(btn);
+      });
+    }
+
+    function renderSubClassFilter() {
+      const teacher = getSelectedTeacher();
+      subClassFilter.innerHTML = "";
+
+      const options = [
+        { label: "담당 반 전체", value: "ALL" },
+        ...teacher.classes.map(c => ({ label: `${c}반`, value: c }))
+      ];
+
+      options.forEach(opt => {
+        const isSelected = selectedSubClass === opt.value;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = opt.label;
+        btn.className = isSelected
+          ? "px-3 py-1.5 rounded-xl bg-slate-800 text-white text-xs font-bold transition"
+          : "px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-semibold transition";
+        btn.addEventListener("click", () => {
+          selectedSubClass = opt.value;
+          renderSubClassFilter();
+          renderQuestionList();
+        });
+        subClassFilter.appendChild(btn);
+      });
+    }
+
+    // Firestore 실시간 구독 시작
+    function startRealtimeListener() {
+      if (unsubscribe) return;
+      firestoreErrorBanner.classList.add("hidden");
+      setConnectionStatus("connecting");
+
+      const q = query(collection(db, COLLECTION_NAME), orderBy("createdAt", "desc"));
+      unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          firestoreErrorBanner.classList.add("hidden");
+          setConnectionStatus("connected");
+          allQuestions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          renderQuestionList();
+        },
+        (err) => {
+          console.error("Firestore 실시간 연동 오류:", err);
+          setConnectionStatus("error");
+          firestoreErrorBanner.classList.remove("hidden");
+          if (err && err.code === "permission-denied") {
+            firestoreErrorDetail.textContent = "접근 권한이 거부되었습니다(permission-denied). Firebase 콘솔의 [Firestore Database > 규칙]에서 calculus1_questions 컬렉션의 읽기/쓰기 권한을 허용한 뒤 게시해 주세요.";
+            showToast("Firestore 권한 오류: 보안 규칙을 확인해 주세요.");
+          } else {
+            firestoreErrorDetail.textContent = "실시간 데이터를 불러오지 못했습니다. 네트워크 연결과 Firebase 설정을 확인해 주세요.";
+            showToast("실시간 데이터를 불러오지 못했습니다.");
+          }
+        }
+      );
+    }
+
+    function stopRealtimeListener() {
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+      }
+    }
+
+    // 동일 질문 합산 및 정렬
+    function aggregateQuestions(items, sortBy = "count") {
+      const groupedMap = new Map();
+
+      items.forEach(item => {
+        const pageNum = Number(item.page);
+        const probNum = Number(item.problemNum);
+        const key = `${pageNum}__${probNum}`;
+        if (!groupedMap.has(key)) {
+          groupedMap.set(key, {
+            page: pageNum,
+            problemNum: probNum,
+            count: 0,
+            docIds: [],
+            classBreakdown: {}
+          });
+        }
+        const group = groupedMap.get(key);
+        group.count += 1;
+        group.docIds.push(item.id);
+        const cls = Number(item.classNum);
+        group.classBreakdown[cls] = (group.classBreakdown[cls] || 0) + 1;
+      });
+
+      const groupedList = Array.from(groupedMap.values());
+
+      groupedList.sort((a, b) => {
+        if (sortBy === "count" && b.count !== a.count) {
+          return b.count - a.count;
+        }
+        if (a.page !== b.page) {
+          return a.page - b.page;
+        }
+        return a.problemNum - b.problemNum;
+      });
+
+      return groupedList;
+    }
+
+    function formatBreakdown(classBreakdown) {
+      return Object.entries(classBreakdown)
+        .sort((a, b) => Number(a[0]) - Number(b[0]))
+        .map(([cls, cnt]) => `${cls}반(${cnt})`)
+        .join(" · ");
+    }
+
+    function formatTimestamp(ts) {
+      if (!ts) return "저장 중";
+      try {
+        const date = typeof ts.toDate === "function" ? ts.toDate() : new Date(ts);
+        if (Number.isNaN(date.getTime())) return "-";
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, "0");
+        const dd = String(date.getDate()).padStart(2, "0");
+        const hh = String(date.getHours()).padStart(2, "0");
+        const min = String(date.getMinutes()).padStart(2, "0");
+        const ss = String(date.getSeconds()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+      } catch {
+        return "-";
+      }
+    }
+
+    function getFilteredQuestions() {
+      const teacher = getSelectedTeacher();
+      const targetClasses = selectedSubClass === "ALL" ? teacher.classes : [selectedSubClass];
+      return allQuestions.filter(q => targetClasses.includes(Number(q.classNum)));
+    }
+
+    // 질문 목록 렌더링
+    function renderQuestionList() {
+      const teacher = getSelectedTeacher();
+      const filtered = getFilteredQuestions();
+      const groupedList = aggregateQuestions(filtered, sortSelect.value);
+
+      filterStatusText.textContent = selectedSubClass === "ALL"
+        ? `${teacher.name}T 담당 반 전체 (${teacher.classes.join(", ")}반)`
+        : `${teacher.name}T · ${selectedSubClass}반`;
+
+      summaryCount.textContent = `문제 ${groupedList.length}종 (총 ${filtered.length}건)`;
+      clearFilteredBtn.disabled = filtered.length === 0;
+
+      if (groupedList.length === 0) {
+        questionList.innerHTML = `
+          <div class="text-center py-12 text-slate-400 text-sm bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            등록된 질문이 없습니다.
+          </div>
+        `;
+        return;
+      }
+
+      questionList.innerHTML = "";
+      groupedList.forEach(g => {
+        const breakdownText = formatBreakdown(g.classBreakdown);
+        const badgeStyle = g.count >= 3
+          ? "bg-rose-100 text-rose-700"
+          : "bg-indigo-100 text-indigo-700";
+
+        const card = document.createElement("div");
+        card.className = "flex items-center justify-between gap-3 p-4 bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 transition shadow-sm";
+        card.innerHTML = `
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-base font-bold text-slate-800">p.${escapeHtml(g.page)}</span>
+              <span class="text-slate-300">|</span>
+              <span class="text-base font-bold text-indigo-700 truncate">${escapeHtml(g.problemNum)}번</span>
+            </div>
+            <div class="text-xs text-slate-500 mt-1 truncate">${escapeHtml(breakdownText)}</div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="px-3 py-1 rounded-full text-xs font-extrabold ${badgeStyle}">
+              질문 ${g.count}회
+            </span>
+            <button type="button" class="delete-group-btn text-xs font-semibold text-slate-500 hover:text-rose-600 px-2.5 py-1.5 rounded-xl hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition" title="풀이 완료(삭제)">
+              완료
+            </button>
+          </div>
+        `;
+
+        // 개별 문제 완료(삭제) 시 비밀번호 재입력 모달 호출
+        card.querySelector(".delete-group-btn").addEventListener("click", () => {
+          openDeleteAuthModal({
+            title: "풀이 완료(삭제) 확인",
+            message: `p.${g.page} ${g.problemNum}번 질문(총 ${g.count}건)을 목록에서 삭제합니다.`,
+            okText: "완료(삭제)",
+            onConfirm: async () => {
+              await deleteDocIdsInBatches(g.docIds);
+              showToast(`p.${g.page} ${g.problemNum}번 질문이 풀이 완료 처리되었습니다.`);
+            }
+          });
+        });
+
+        questionList.appendChild(card);
+      });
+    }
+
+    // 현재 필터된 목록 일괄 비우기 (비밀번호 재입력 모달 호출)
+    clearFilteredBtn.addEventListener("click", () => {
+      const teacher = getSelectedTeacher();
+      const filtered = getFilteredQuestions();
+      if (filtered.length === 0) return;
+
+      const scopeLabel = selectedSubClass === "ALL"
+        ? `${teacher.name}T 담당 반 전체(${teacher.classes.join(", ")}반)`
+        : `${teacher.name}T ${selectedSubClass}반`;
+
+      openDeleteAuthModal({
+        title: "목록 일괄 비우기",
+        message: `${scopeLabel}의 질문 총 ${filtered.length}건을 모두 삭제합니다.\n삭제된 질문은 복구할 수 없습니다.`,
+        okText: "전체 삭제",
+        onConfirm: async () => {
+          const docIds = filtered.map(item => item.id);
+          await deleteDocIdsInBatches(docIds);
+          showToast(`${scopeLabel} 질문 ${docIds.length}건이 모두 삭제되었습니다.`);
+        }
+      });
+    });
+
+    // =========================================================================
+    // 선생님별 전체 질문 엑셀 다운로드 (SheetJS)
+    // =========================================================================
+    function downloadTeacherExcel() {
+      const teacher = getSelectedTeacher();
+      const teacherItems = allQuestions.filter(q => teacher.classes.includes(Number(q.classNum)));
+
+      if (teacherItems.length === 0) {
+        showToast(`${teacher.name}T 담당 반(${teacher.classes.join(", ")}반)에 다운로드할 질문이 없습니다.`);
+        return;
+      }
+
+      if (typeof window.XLSX === "undefined") {
+        showToast("엑셀 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.");
+        return;
+      }
+
+      const now = new Date();
+      const yyyymmdd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+      const fileName = `미적분1_부교재질문_${teacher.name}_${yyyymmdd}.xlsx`;
+
+      // 시트 1: 질문집계
+      const grouped = aggregateQuestions(teacherItems, sortSelect.value);
+      const summaryRows = grouped.map(g => ({
+        "페이지": g.page,
+        "문제번호": g.problemNum,
+        "총 질문횟수": g.count,
+        "반별 분포": formatBreakdown(g.classBreakdown)
+      }));
+
+      // 시트 2: 원본내역
+      const rawRows = teacherItems.map(item => ({
+        "반": `${item.classNum}반`,
+        "페이지": Number(item.page),
+        "문제번호": Number(item.problemNum),
+        "등록일시": formatTimestamp(item.createdAt)
+      }));
+
+      try {
+        const wb = window.XLSX.utils.book_new();
+
+        const wsSummary = window.XLSX.utils.json_to_sheet(summaryRows);
+        wsSummary["!cols"] = [{ wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 30 }];
+        window.XLSX.utils.book_append_sheet(wb, wsSummary, "질문집계");
+
+        const wsRaw = window.XLSX.utils.json_to_sheet(rawRows);
+        wsRaw["!cols"] = [{ wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 22 }];
+        window.XLSX.utils.book_append_sheet(wb, wsRaw, "원본내역");
+
+        window.XLSX.writeFile(wb, fileName);
+        showToast(`${teacher.name}T 전체 질문 엑셀 파일이 다운로드되었습니다.`);
+      } catch (err) {
+        console.error("엑셀 다운로드 오류:", err);
+        showToast("엑셀 파일 생성 중 오류가 발생했습니다.");
+      }
+    }
+
+    // =========================================================================
+    // 이벤트 연결 및 초기 실행
+    // =========================================================================
+    document.getElementById("goStudentBtn").addEventListener("click", () => {
+      resetStudentForm();
+      showView("student");
+    });
+
+    document.getElementById("goTeacherLoginBtn").addEventListener("click", () => {
+      if (sessionStorage.getItem("teacherAuth") === "true") {
+        renderTeacherTabs();
+        renderSubClassFilter();
+        updateExcelButtonUI();
+        showView("teacher");
+      } else {
+        loginError.classList.add("hidden");
+        passwordInput.value = "";
+        showView("login");
+        setTimeout(() => passwordInput.focus(), 50);
+      }
+    });
+
+    btnHome.addEventListener("click", () => showView("home"));
+    btnLogout.addEventListener("click", handleLogout);
+    addRowBtn.addEventListener("click", addQuestionRow);
+    document.getElementById("loginSubmitBtn").addEventListener("click", handleLogin);
+    passwordInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleLogin();
+    });
+    sortSelect.addEventListener("change", renderQuestionList);
+    downloadExcelBtn.addEventListener("click", downloadTeacherExcel);
+
+    // 초기 1~9반 버튼 생성
+    initClassButtons();
+  </script>
+</body>
+</html>
