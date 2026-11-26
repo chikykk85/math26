@@ -6,10 +6,18 @@
   <title>미적분Ⅰ 부교재 질문 수합</title>
   <!-- Tailwind CSS v3 CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- SheetJS (xlsx 0.18.5) CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- SheetJS (xlsx 0.20.3 우선 로드, 실패 시 cdnjs 0.18.5 자동 폴백) -->
+  <script
+    src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"
+    onerror="const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';document.head.appendChild(s);"
+  ></script>
   <!-- Pretendard 웹폰트 -->
-  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link
+    rel="stylesheet"
+    as="style"
+    crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"
+  />
   <script>
     tailwind.config = {
       theme: {
@@ -22,9 +30,9 @@
     };
   </script>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-start bg-slate-50 text-slate-800 p-4 sm:p-6 pb-16 font-sans antialiased">
+<body class="flex flex-col items-center justify-start min-h-screen bg-slate-50 text-slate-800 p-4 sm:p-6 pb-16 font-sans antialiased">
 
-  <!-- 메인 컨테이너 (화면 전환 시 JS에서 marginTop 동적 제어) -->
+  <!-- 메인 컨테이너 (showView에서 화면별 marginTop 동적 제어) -->
   <main id="mainContainer" style="margin-top: 18vh;" class="w-full max-w-3xl bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden transition-all duration-200">
 
     <!-- 상단 공통 헤더 -->
@@ -42,53 +50,60 @@
     <section id="viewHome" class="p-6 sm:p-8 flex flex-col gap-4">
       <button id="goStudentBtn" type="button" class="w-full py-6 px-6 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white rounded-2xl font-bold text-xl sm:text-2xl shadow-md shadow-indigo-200 transition flex items-center justify-between gap-3 text-left">
         <span>✏️ 미적분Ⅰ 부교재 질문하기</span>
-        <span class="text-indigo-100 text-sm sm:text-base font-medium shrink-0">학생용 →</span>
+        <span class="text-indigo-100 text-base font-medium shrink-0">학생용 →</span>
       </button>
 
       <button id="goTeacherLoginBtn" type="button" class="w-full py-6 px-6 bg-slate-100 hover:bg-slate-200 active:scale-[0.99] text-slate-800 rounded-2xl font-bold text-xl sm:text-2xl border border-slate-200 transition flex items-center justify-between gap-3 text-left">
         <span>📋 질문 확인하기</span>
-        <span class="text-slate-500 text-sm sm:text-base font-medium shrink-0">교사용 →</span>
+        <span class="text-slate-500 text-base font-medium shrink-0">교사용 →</span>
       </button>
     </section>
 
     <!-- [화면 2] 학생 질문 입력 화면 -->
     <section id="viewStudent" class="hidden p-5 sm:p-8 space-y-7">
-      <!-- 1단계: 반 선택 (1반 ~ 9반) -->
+      <!-- 1단계: 반 선택 (1반 ~ 9반, 3열 그리드) -->
       <div>
         <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <label class="text-base sm:text-lg font-bold text-slate-800">1. 자신의 반을 선택하세요</label>
-          <span id="selectedClassBadge" class="hidden text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-xl"></span>
+          <label class="text-lg font-bold text-slate-800">1. 자신의 반을 선택하세요</label>
+          <span id="selectedClassBadge" class="hidden text-base font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3.5 py-1 rounded-xl"></span>
         </div>
-        <div id="classSelector" class="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
-          <!-- JS로 1~9반 버튼 동적 생성 -->
+
+        <!-- 반별 질문 마감 경고 박스 -->
+        <div id="deadlineWarningBox" role="alert" class="hidden mb-3.5 p-4 rounded-xl bg-rose-50 border-2 border-rose-300 text-rose-700 text-base sm:text-lg font-bold flex items-start gap-2.5 shadow-sm">
+          <span class="shrink-0">⛔</span>
+          <span id="deadlineWarningText">질문이 마감되었습니다.</span>
+        </div>
+
+        <div id="classSelector" class="grid grid-cols-3 gap-2.5 sm:gap-3">
+          <!-- JS로 1~9반 버튼 렌더링 -->
         </div>
       </div>
 
       <!-- 2단계: 페이지 및 문제번호 입력 -->
       <div>
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
-          <label class="text-base sm:text-lg font-bold text-slate-800">2. 질문할 문제의 페이지와 문제번호를 입력하세요</label>
-          <span class="text-sm text-slate-500">1 이상의 자연수만 입력 (예: 42 / 15)</span>
+          <label class="text-lg font-bold text-slate-800">2. 질문할 문제의 페이지와 문제번호를 입력하세요</label>
+          <span class="text-sm sm:text-base text-slate-500">1 이상의 자연수만 입력 (예: 42 / 15)</span>
         </div>
 
-        <!-- 인라인 입력 오류 경고 박스 -->
-        <div id="studentErrorBox" role="alert" class="hidden mb-3.5 p-4 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 text-sm sm:text-base font-semibold flex items-start gap-2.5">
+        <!-- 자연수 검증 오류 인라인 경고 박스 -->
+        <div id="studentErrorBox" role="alert" class="hidden mb-3.5 p-4 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 text-base font-semibold flex items-start gap-2.5">
           <span class="shrink-0">⚠️</span>
           <span id="studentErrorText">페이지와 문제번호를 다시 확인해 주세요. (1 이상의 자연수만 입력 가능합니다.)</span>
         </div>
 
         <div id="questionRows" class="space-y-3">
-          <!-- JS로 질문 입력 행 동적 생성 -->
+          <!-- JS로 질문 입력 행 렌더링 -->
         </div>
 
-        <button id="addRowBtn" type="button" class="mt-3.5 w-full py-3.5 border-2 border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 active:scale-[0.99] rounded-xl font-bold text-base sm:text-lg transition">
+        <button id="addRowBtn" type="button" class="mt-3.5 w-full py-3.5 border-2 border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 active:scale-[0.99] rounded-xl font-bold text-lg transition">
           + 추가 질문하기
         </button>
       </div>
 
-      <!-- 3단계: 최종 저장 버튼 -->
+      <!-- 3단계: 질문하기 완료 -->
       <div class="pt-1">
-        <button id="submitQuestionsBtn" type="button" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white rounded-2xl font-bold text-lg sm:text-xl shadow-md shadow-indigo-200 transition disabled:opacity-50 disabled:cursor-not-allowed">
+        <button id="submitQuestionsBtn" type="button" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white rounded-2xl font-bold text-xl shadow-md shadow-indigo-200 transition disabled:opacity-50 disabled:cursor-not-allowed">
           질문하기 완료
         </button>
       </div>
@@ -102,9 +117,17 @@
       </div>
 
       <div class="max-w-sm mx-auto space-y-3.5">
-        <input id="passwordInput" type="password" inputmode="numeric" autocomplete="off" placeholder="비밀번호 입력"
-          class="w-full px-4 py-3.5 text-center text-xl font-semibold tracking-[0.25em] border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-        <p id="loginError" class="hidden text-center text-sm sm:text-base text-rose-600 font-semibold">비밀번호가 올바르지 않습니다.</p>
+        <input
+          id="passwordInput"
+          type="password"
+          inputmode="numeric"
+          autocomplete="off"
+          placeholder="비밀번호 입력"
+          class="w-full px-4 py-3.5 text-center text-xl font-semibold tracking-[0.25em] border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <p id="loginError" class="hidden text-center text-base text-rose-600 font-semibold">
+          비밀번호가 올바르지 않습니다.
+        </p>
         <button id="loginSubmitBtn" type="button" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white rounded-xl font-bold text-lg shadow-md shadow-indigo-100 transition">
           로그인
         </button>
@@ -113,13 +136,17 @@
 
     <!-- [화면 4] 교사 실시간 질문 확인 대시보드 -->
     <section id="viewTeacher" class="hidden p-5 sm:p-7 space-y-5">
-      <!-- 상단 상태 및 관리 바 (연결 상태 / 목록 비우기 / 로그아웃) -->
-      <div class="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-slate-200">
-        <span id="connectionBadge" class="inline-flex items-center gap-2 text-sm sm:text-base font-semibold text-amber-700 bg-amber-50 px-3.5 py-1.5 rounded-full">
+      <!-- 상단 상태 및 관리 바 -->
+      <div class="flex flex-wrap items-center justify-between gap-2.5 pb-3.5 border-b border-slate-200">
+        <span id="connectionBadge" class="inline-flex items-center gap-2 text-base font-semibold text-amber-700 bg-amber-50 px-3.5 py-1.5 rounded-full">
           <span id="connectionDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
           <span id="connectionText">연결 중...</span>
         </span>
-        <div class="flex items-center gap-2 ml-auto">
+        <div class="flex flex-wrap items-center gap-2 ml-auto">
+          <button id="downloadExcelBtn" type="button" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-sm sm:text-base font-bold rounded-xl shadow-sm transition inline-flex items-center gap-1.5">
+            <span>📥</span>
+            <span id="downloadExcelLabel">윤원석T 전체 엑셀 다운로드</span>
+          </button>
           <button id="clearFilteredBtn" type="button" class="px-3.5 py-2 text-sm sm:text-base font-bold text-rose-600 hover:text-white hover:bg-rose-600 bg-white rounded-xl border border-rose-300 hover:border-rose-600 transition disabled:opacity-40 disabled:cursor-not-allowed">
             목록 비우기
           </button>
@@ -130,53 +157,66 @@
       </div>
 
       <!-- Firestore 권한 오류 안내 배너 -->
-      <div id="firestoreErrorBanner" class="hidden bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-4 text-sm sm:text-base leading-relaxed">
+      <div id="firestoreErrorBanner" class="hidden bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-4 text-base leading-relaxed">
         <p class="font-bold text-rose-900 mb-1">⚠️ Firestore 데이터베이스 접근 권한 오류</p>
-        <p id="firestoreErrorDetail">Firebase 콘솔의 [Firestore Database &gt; 규칙]에서 calculus1_questions 컬렉션의 읽기/쓰기 권한이 허용되어 있는지 확인해 주세요.</p>
+        <p id="firestoreErrorDetail">
+          Firebase 콘솔의 [Firestore Database &gt; 규칙]에서 calculus1_questions 컬렉션의 읽기/쓰기 권한이 허용되어 있는지 확인해 주세요.
+        </p>
       </div>
 
       <!-- 담당 선생님 선택 탭 -->
       <div>
         <label class="block text-base font-bold text-slate-700 mb-2.5">담당 선생님 선택</label>
         <div id="teacherTabs" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <!-- JS로 4명의 선생님 탭 생성 -->
+          <!-- JS로 4명의 선생님 탭 렌더링 -->
         </div>
       </div>
 
-      <!-- 선생님별 전체 엑셀 다운로드 버튼 -->
-      <div>
-        <button id="downloadExcelBtn" type="button" class="w-full py-3.5 px-5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-base sm:text-lg font-bold rounded-xl shadow-sm transition flex items-center justify-center gap-2">
-          <span>📥</span>
-          <span id="downloadExcelLabel">윤원석 T 전체 엑셀 다운로드 (.xlsx)</span>
+      <!-- 반별 질문 마감 시간 설정 패널 (접기/펼치기 지원) -->
+      <div class="bg-indigo-50/60 border border-indigo-200 rounded-2xl overflow-hidden">
+        <button id="toggleDeadlinePanelBtn" type="button" aria-expanded="true" class="w-full px-4 py-3.5 flex items-center justify-between gap-2 text-left hover:bg-indigo-100/60 transition">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-lg shrink-0">⏰</span>
+            <span id="deadlinePanelTitle" class="text-base sm:text-lg font-bold text-indigo-950 truncate">반별 질문 마감 시간 설정</span>
+          </div>
+          <span id="deadlinePanelChevron" class="text-sm sm:text-base font-bold text-indigo-700 shrink-0">접기 ▲</span>
         </button>
+        <div id="deadlinePanelBody" class="px-4 pb-4 pt-2.5 space-y-3 border-t border-indigo-200/70">
+          <p class="text-sm sm:text-base text-indigo-900/80">
+            담당 반별로 마감 날짜와 시간을 저장하면 학생 화면에 즉시 반영되며, 언제든 수정하거나 해제할 수 있습니다.
+          </p>
+          <div id="deadlineSettingsList" class="space-y-2.5">
+            <!-- JS로 선택된 선생님의 담당 반 마감 설정 행 렌더링 -->
+          </div>
+        </div>
       </div>
 
-      <!-- 세부 필터 및 정렬 컨트롤 영역 -->
+      <!-- 세부 필터 및 정렬 컨트롤 -->
       <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3.5">
         <!-- 1행: 담당 반 필터 + 정렬 드롭다운 -->
         <div class="flex flex-wrap items-center justify-between gap-2.5">
           <div id="subClassFilter" class="flex flex-wrap gap-2">
-            <!-- JS로 담당 반 전체 + 개별 반 버튼 생성 -->
+            <!-- JS로 담당 반 전체 + 개별 반 버튼 렌더링 -->
           </div>
           <div class="ml-auto">
-            <select id="sortSelect" aria-label="정렬 기준" class="text-sm sm:text-base font-semibold border border-slate-300 rounded-xl px-3.5 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select id="sortSelect" aria-label="정렬 기준" class="text-base font-semibold border border-slate-300 rounded-xl px-3.5 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
               <option value="count">질문 많은 순</option>
               <option value="page">페이지·번호 순</option>
             </select>
           </div>
         </div>
 
-        <!-- 2행: 풀이 완료 표시 필터 (완료 맨 아래로 / 완료 숨기기 / 기본 순서) -->
+        <!-- 2행: 풀이 완료 표시 필터 -->
         <div class="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-slate-200/80">
-          <span class="text-sm sm:text-base font-bold text-slate-600">풀이 완료 표시</span>
+          <span class="text-base font-bold text-slate-600">풀이 완료 표시</span>
           <div id="solvedFilterGroup" class="flex flex-wrap gap-2" role="group" aria-label="풀이 완료 표시 필터">
-            <!-- JS로 3가지 필터 버튼 생성 -->
+            <!-- JS로 3가지 필터 버튼 렌더링 -->
           </div>
         </div>
       </div>
 
       <!-- 요약 카운트 바 -->
-      <div class="flex flex-wrap items-center justify-between gap-2 text-sm sm:text-base px-1">
+      <div class="flex flex-wrap items-center justify-between gap-2 text-base px-1">
         <span id="filterStatusText" class="text-slate-600 font-medium">담당 반 전체</span>
         <span id="summaryCount" class="font-bold text-slate-800">미완료 0종 · 완료 0종 (총 0건)</span>
       </div>
@@ -192,15 +232,23 @@
   <div id="deleteModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
     <div role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle" class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-7 space-y-5">
       <div>
-        <h3 id="deleteModalTitle" class="text-xl font-bold text-slate-800">질문 삭제 확인</h3>
+        <h3 id="deleteModalTitle" class="text-2xl font-bold text-slate-800">질문 삭제 확인</h3>
         <p id="deleteModalMessage" class="text-base text-slate-600 mt-2 leading-relaxed whitespace-pre-line"></p>
       </div>
 
       <div class="space-y-2">
-        <label for="deletePasswordInput" class="block text-sm font-bold text-slate-600">삭제하려면 교사 비밀번호를 다시 입력하세요</label>
-        <input id="deletePasswordInput" type="password" inputmode="numeric" autocomplete="off" placeholder="비밀번호 입력"
-          class="w-full px-4 py-3 text-center text-lg font-semibold tracking-[0.2em] border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500" />
-        <p id="deletePasswordError" class="hidden text-sm text-rose-600 font-semibold text-center">비밀번호가 올바르지 않습니다.</p>
+        <label for="deletePasswordInput" class="block text-sm sm:text-base font-bold text-slate-600">삭제하려면 교사 비밀번호를 다시 입력하세요</label>
+        <input
+          id="deletePasswordInput"
+          type="password"
+          inputmode="numeric"
+          autocomplete="off"
+          placeholder="비밀번호 입력"
+          class="w-full px-4 py-3 text-center text-xl font-semibold tracking-[0.2em] border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500"
+        />
+        <p id="deletePasswordError" class="hidden text-base text-rose-600 font-semibold text-center">
+          비밀번호가 올바르지 않습니다.
+        </p>
       </div>
 
       <div class="flex items-center justify-end gap-2.5 pt-1">
@@ -219,13 +267,14 @@
     메시지
   </div>
 
-  <!-- Firebase v10.12.2 Modular SDK 및 앱 스크립트 -->
+  <!-- Firebase v10.12.2 Modular SDK 및 앱 로직 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import {
       getFirestore,
       collection,
       addDoc,
+      setDoc,
       onSnapshot,
       serverTimestamp,
       writeBatch,
@@ -233,7 +282,7 @@
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     // =========================================================================
-    // 1. Firebase 설정 및 상수 정의
+    // 1. Firebase 설정 및 상수
     // =========================================================================
     const firebaseConfig = {
       apiKey: "AIzaSyDiC22u_TEVNXPDC58o1uh1VpqFQ7jlW7o",
@@ -246,36 +295,44 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+
     const COLLECTION_NAME = "calculus1_questions";
+    const DEADLINE_DOC_ID = "deadline_settings";
     const TEACHER_PASSWORD = "18128";
     const POSITIVE_INT_REGEX = /^[1-9]\d*$/;
-    const VALIDATION_ERROR_MSG = "페이지와 문제번호를 다시 확인해 주세요. (1 이상의 자연수만 입력 가능합니다.)";
     const BATCH_LIMIT = 450;
+    const DEADLINE_REFRESH_MS = 10000;
 
-    // 선생님별 담당 반 설정
+    // 담당 선생님 및 담당 반 정의
     const TEACHERS = [
-      { id: "yoon", name: "윤원석", label: "윤원석 T", classes: [1, 2] },
-      { id: "jeong", name: "정혜린", label: "정혜린 T", classes: [3, 5] },
-      { id: "min", name: "민선영", label: "민선영 T", classes: [4, 6] },
-      { id: "lee", name: "이창호", label: "이창호 T", classes: [7, 8, 9] }
+      { id: "yoon", name: "윤원석", classes: [1, 2] },
+      { id: "jeon", name: "전혜린", classes: [3, 5] },
+      { id: "min",  name: "민선영", classes: [4, 6] },
+      { id: "lee",  name: "이창호", classes: [7, 8, 9] }
     ];
 
-    // 풀이 완료 표시 필터 옵션 (기본값: bottom)
     const SOLVED_FILTER_OPTIONS = [
       { value: "bottom", label: "완료 맨 아래로" },
-      { value: "hide", label: "완료 숨기기" },
-      { value: "all", label: "기본 순서" }
+      { value: "hide",   label: "완료 숨기기" },
+      { value: "all",    label: "기본 순서" }
     ];
 
     // =========================================================================
-    // 2. 앱 상태 변수 및 DOM 요소 참조
+    // 2. 상태 변수 및 DOM 요소
     // =========================================================================
     let selectedClass = null;
     let selectedTeacherId = TEACHERS[0].id;
-    let selectedSubClass = "ALL";
-    let solvedFilterMode = "bottom"; // 'bottom' | 'hide' | 'all'
+    let selectedSubClass = "ALL"; // "ALL" 또는 담당 반 숫자
+    let solvedFilterMode = "bottom"; // "bottom" | "hide" | "all"
     let allQuestions = [];
-    let unsubscribe = null;
+    let deadlineDocData = {}; // deadline_settings 문서 원본 데이터
+    const dirtyDeadlineClasses = new Set(); // 교사가 수정 중인 미저장 반 번호 추적
+    let currentViewName = "home";
+    let isDeadlinePanelOpen = true;
+    let isSubmittingQuestions = false;
+    let unsubscribeQuestions = null;
+    let unsubscribeDeadlines = null;
+    let deadlineCheckTimer = null;
     let pendingDeleteCallback = null;
     let toastTimer = null;
 
@@ -291,6 +348,8 @@
     const btnLogout = document.getElementById("btnLogout");
     const classSelector = document.getElementById("classSelector");
     const selectedClassBadge = document.getElementById("selectedClassBadge");
+    const deadlineWarningBox = document.getElementById("deadlineWarningBox");
+    const deadlineWarningText = document.getElementById("deadlineWarningText");
     const studentErrorBox = document.getElementById("studentErrorBox");
     const studentErrorText = document.getElementById("studentErrorText");
     const questionRows = document.getElementById("questionRows");
@@ -301,18 +360,23 @@
     const loginError = document.getElementById("loginError");
     const loginSubmitBtn = document.getElementById("loginSubmitBtn");
 
-    const firestoreErrorBanner = document.getElementById("firestoreErrorBanner");
-    const firestoreErrorDetail = document.getElementById("firestoreErrorDetail");
     const connectionBadge = document.getElementById("connectionBadge");
     const connectionDot = document.getElementById("connectionDot");
     const connectionText = document.getElementById("connectionText");
-    const teacherTabs = document.getElementById("teacherTabs");
-    const subClassFilter = document.getElementById("subClassFilter");
-    const solvedFilterGroup = document.getElementById("solvedFilterGroup");
-    const sortSelect = document.getElementById("sortSelect");
+    const firestoreErrorBanner = document.getElementById("firestoreErrorBanner");
+    const firestoreErrorDetail = document.getElementById("firestoreErrorDetail");
     const downloadExcelBtn = document.getElementById("downloadExcelBtn");
     const downloadExcelLabel = document.getElementById("downloadExcelLabel");
     const clearFilteredBtn = document.getElementById("clearFilteredBtn");
+    const teacherTabs = document.getElementById("teacherTabs");
+    const toggleDeadlinePanelBtn = document.getElementById("toggleDeadlinePanelBtn");
+    const deadlinePanelTitle = document.getElementById("deadlinePanelTitle");
+    const deadlinePanelChevron = document.getElementById("deadlinePanelChevron");
+    const deadlinePanelBody = document.getElementById("deadlinePanelBody");
+    const deadlineSettingsList = document.getElementById("deadlineSettingsList");
+    const subClassFilter = document.getElementById("subClassFilter");
+    const sortSelect = document.getElementById("sortSelect");
+    const solvedFilterGroup = document.getElementById("solvedFilterGroup");
     const filterStatusText = document.getElementById("filterStatusText");
     const summaryCount = document.getElementById("summaryCount");
     const questionList = document.getElementById("questionList");
@@ -324,12 +388,20 @@
     const deletePasswordError = document.getElementById("deletePasswordError");
     const deleteCancelBtn = document.getElementById("deleteCancelBtn");
     const deleteConfirmBtn = document.getElementById("deleteConfirmBtn");
-
     const toast = document.getElementById("toast");
 
     // =========================================================================
     // 3. 공통 유틸리티 함수
     // =========================================================================
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.remove("opacity-0");
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.add("opacity-0");
+      }, 2800);
+    }
+
     function escapeHtml(value) {
       return String(value ?? "")
         .replace(/&/g, "&amp;")
@@ -339,87 +411,143 @@
         .replace(/'/g, "&#39;");
     }
 
-    function isPositiveInteger(str) {
-      return POSITIVE_INT_REGEX.test(String(str).trim());
+    function isPositiveInteger(value) {
+      return POSITIVE_INT_REGEX.test(String(value ?? "").trim());
     }
 
-    function showToast(message) {
-      toast.textContent = message;
-      toast.classList.remove("opacity-0");
-      if (toastTimer) clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => {
-        toast.classList.add("opacity-0");
-      }, 2800);
+    function getSelectedTeacher() {
+      return TEACHERS.find(t => t.id === selectedTeacherId) || TEACHERS[0];
     }
 
-    function showStudentError(message) {
-      studentErrorText.textContent = message;
-      studentErrorBox.classList.remove("hidden");
+    // 마감 설정 문서 여부 확인 (질문 집계/엑셀/삭제에서 절대 제외)
+    function isSettingsDoc(docId) {
+      return docId === DEADLINE_DOC_ID;
     }
 
-    function hideStudentError() {
-      studentErrorBox.classList.add("hidden");
-    }
+    // Safari/iOS UTC 오파싱을 방지하기 위한 로컬 타임존 수동 파서 (YYYY-MM-DDTHH:mm)
+    function parseLocalDateTime(str) {
+      if (!str || typeof str !== "string") return null;
+      const trimmed = str.trim();
+      const parts = trimmed.split("T");
+      if (parts.length !== 2) return null;
 
-    function setInputInvalid(inputEl, isInvalid) {
-      const errorClasses = ["border-rose-500", "ring-2", "ring-rose-200", "bg-rose-50"];
-      const normalClasses = ["border-slate-300", "bg-white"];
-      if (isInvalid) {
-        inputEl.classList.remove(...normalClasses);
-        inputEl.classList.add(...errorClasses);
-      } else {
-        inputEl.classList.remove(...errorClasses);
-        inputEl.classList.add(...normalClasses);
+      const dateParts = parts[0].split("-").map(Number);
+      const timeParts = parts[1].split(":").map(Number);
+      if (dateParts.length !== 3 || timeParts.length < 2) return null;
+
+      const [year, month, day] = dateParts;
+      const [hour, minute] = timeParts;
+      if (
+        !Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day) ||
+        !Number.isInteger(hour) || !Number.isInteger(minute)
+      ) {
+        return null;
       }
+
+      const date = new Date(year, month - 1, day, hour, minute, 0, 0);
+      if (
+        Number.isNaN(date.getTime()) ||
+        date.getFullYear() !== year ||
+        date.getMonth() !== month - 1 ||
+        date.getDate() !== day ||
+        date.getHours() !== hour ||
+        date.getMinutes() !== minute
+      ) {
+        return null;
+      }
+      return date;
+    }
+
+    // 반별 마감 정보 조회 (class_{c} 우선, 이전 deadlines.{c} 포맷도 호환 읽기)
+    function getClassDeadlineInfo(classNum) {
+      const key = `class_${classNum}`;
+      let entry;
+      if (Object.prototype.hasOwnProperty.call(deadlineDocData, key)) {
+        entry = deadlineDocData[key];
+      } else if (deadlineDocData.deadlines && Object.prototype.hasOwnProperty.call(deadlineDocData.deadlines, String(classNum))) {
+        entry = deadlineDocData.deadlines[String(classNum)];
+      } else {
+        entry = null;
+      }
+
+      if (!entry) return null;
+
+      if (typeof entry === "object" && typeof entry.str === "string" && entry.str.trim()) {
+        const parsed = parseLocalDateTime(entry.str);
+        const ms = Number.isFinite(entry.ms) ? entry.ms : (parsed ? parsed.getTime() : NaN);
+        if (!Number.isFinite(ms)) return null;
+        return { str: entry.str.trim(), ms };
+      }
+
+      if (typeof entry === "string" && entry.trim()) {
+        const parsed = parseLocalDateTime(entry);
+        if (!parsed) return null;
+        return { str: entry.trim(), ms: parsed.getTime() };
+      }
+
+      return null;
+    }
+
+    function isClassClosed(classNum) {
+      const info = getClassDeadlineInfo(classNum);
+      if (!info) return false;
+      return Date.now() >= info.ms;
+    }
+
+    function formatDeadlineShort(str) {
+      const date = parseLocalDateTime(str);
+      if (!date) return "";
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      const hh = String(date.getHours()).padStart(2, "0");
+      const min = String(date.getMinutes()).padStart(2, "0");
+      return `~${mm}/${dd} ${hh}:${min}`;
+    }
+
+    function getTimestampMillis(ts) {
+      if (!ts) return Date.now(); // serverTimestamp 반영 직전 pending 문서를 최신순으로 유지
+      if (typeof ts.toMillis === "function") return ts.toMillis();
+      if (typeof ts.seconds === "number") return ts.seconds * 1000;
+      return 0;
+    }
+
+    function formatTimestampKR(ts) {
+      if (!ts) return "저장 중";
+      const date = typeof ts.toDate === "function"
+        ? ts.toDate()
+        : (typeof ts.seconds === "number" ? new Date(ts.seconds * 1000) : null);
+      if (!date || Number.isNaN(date.getTime())) return "저장 중";
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      const hh = String(date.getHours()).padStart(2, "0");
+      const min = String(date.getMinutes()).padStart(2, "0");
+      const ss = String(date.getSeconds()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
     }
 
     function setConnectionStatus(status) {
       if (status === "connected") {
-        connectionBadge.className = "inline-flex items-center gap-2 text-sm sm:text-base font-semibold text-emerald-700 bg-emerald-50 px-3.5 py-1.5 rounded-full";
+        connectionBadge.className = "inline-flex items-center gap-2 text-base font-semibold text-emerald-700 bg-emerald-50 px-3.5 py-1.5 rounded-full";
         connectionDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
         connectionText.textContent = "실시간 연동 중";
       } else if (status === "error") {
-        connectionBadge.className = "inline-flex items-center gap-2 text-sm sm:text-base font-semibold text-rose-700 bg-rose-50 px-3.5 py-1.5 rounded-full";
+        connectionBadge.className = "inline-flex items-center gap-2 text-base font-semibold text-rose-700 bg-rose-50 px-3.5 py-1.5 rounded-full";
         connectionDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
         connectionText.textContent = "연결 오류";
       } else {
-        connectionBadge.className = "inline-flex items-center gap-2 text-sm sm:text-base font-semibold text-amber-700 bg-amber-50 px-3.5 py-1.5 rounded-full";
+        connectionBadge.className = "inline-flex items-center gap-2 text-base font-semibold text-amber-700 bg-amber-50 px-3.5 py-1.5 rounded-full";
         connectionDot.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
         connectionText.textContent = "연결 중...";
       }
     }
 
-    // 타임스탬프를 밀리초로 변환 (pending/null인 경우 최신으로 간주)
-    function getTimestampMillis(ts) {
-      if (!ts) return Number.MAX_SAFE_INTEGER;
-      if (typeof ts.toMillis === "function") return ts.toMillis();
-      if (typeof ts.toDate === "function") return ts.toDate().getTime();
-      const parsed = new Date(ts).getTime();
-      return Number.isNaN(parsed) ? 0 : parsed;
-    }
-
-    function formatTimestamp(ts) {
-      if (!ts) return "저장 중";
-      try {
-        const date = typeof ts.toDate === "function" ? ts.toDate() : new Date(ts);
-        if (Number.isNaN(date.getTime())) return "저장 중";
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, "0");
-        const dd = String(date.getDate()).padStart(2, "0");
-        const hh = String(date.getHours()).padStart(2, "0");
-        const min = String(date.getMinutes()).padStart(2, "0");
-        const ss = String(date.getSeconds()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
-      } catch {
-        return "저장 중";
-      }
-    }
-
-    // Firestore 450건 단위 분할 배치 업데이트 (풀이 완료 토글)
+    // 450건 단위 배치 일괄 수정 (풀이 완료 토글)
     async function updateSolvedInBatches(docIds, solvedValue) {
-      for (let i = 0; i < docIds.length; i += BATCH_LIMIT) {
-        const chunk = docIds.slice(i, i + BATCH_LIMIT);
+      const safeIds = docIds.filter(id => id && !isSettingsDoc(id));
+      for (let i = 0; i < safeIds.length; i += BATCH_LIMIT) {
         const batch = writeBatch(db);
+        const chunk = safeIds.slice(i, i + BATCH_LIMIT);
         chunk.forEach(id => {
           batch.update(doc(db, COLLECTION_NAME, id), { solved: Boolean(solvedValue) });
         });
@@ -427,11 +555,12 @@
       }
     }
 
-    // Firestore 450건 단위 분할 배치 삭제
+    // 450건 단위 배치 일괄 삭제 (deadline_settings 절대 제외)
     async function deleteDocIdsInBatches(docIds) {
-      for (let i = 0; i < docIds.length; i += BATCH_LIMIT) {
-        const chunk = docIds.slice(i, i + BATCH_LIMIT);
+      const safeIds = docIds.filter(id => id && !isSettingsDoc(id));
+      for (let i = 0; i < safeIds.length; i += BATCH_LIMIT) {
         const batch = writeBatch(db);
+        const chunk = safeIds.slice(i, i + BATCH_LIMIT);
         chunk.forEach(id => {
           batch.delete(doc(db, COLLECTION_NAME, id));
         });
@@ -440,10 +569,11 @@
     }
 
     // =========================================================================
-    // 4. 화면 전환 및 화면별 세로 위치(marginTop) 제어
+    // 4. 화면 전환 및 화면별 세로 위치 제어
     // =========================================================================
     function showView(viewName) {
-      Object.values(views).forEach(el => el.classList.add("hidden"));
+      currentViewName = viewName;
+      Object.values(views).forEach(v => v.classList.add("hidden"));
       views[viewName].classList.remove("hidden");
 
       btnHome.classList.toggle("hidden", viewName === "home");
@@ -453,13 +583,17 @@
       } else if (viewName === "login") {
         mainContainer.style.marginTop = "30vh";
       } else {
-        // student, teacher 화면은 맨 위에 배치
         mainContainer.style.marginTop = "0px";
         window.scrollTo({ top: 0, behavior: "auto" });
       }
 
+      if (viewName === "student") {
+        renderClassButtons();
+      }
+
       if (viewName === "teacher") {
         startRealtimeListener();
+        renderDeadlineSettingsPanel();
       } else {
         stopRealtimeListener();
       }
@@ -468,24 +602,47 @@
     // =========================================================================
     // 5. 학생 질문 입력 화면 로직
     // =========================================================================
-    function initClassButtons() {
-      classSelector.innerHTML = "";
-      for (let i = 1; i <= 9; i++) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.textContent = `${i}반`;
-        btn.dataset.classNum = String(i);
-        btn.className = "py-3.5 rounded-xl border border-slate-200 font-semibold text-base sm:text-lg bg-white text-slate-700 hover:bg-indigo-50 transition";
-        btn.addEventListener("click", () => {
-          selectedClass = i;
-          updateClassButtonStyles();
-          hideStudentError();
-        });
-        classSelector.appendChild(btn);
+    function showDeadlineWarning(classNum) {
+      deadlineWarningText.textContent = classNum
+        ? `${classNum}반은 질문이 마감되었습니다.`
+        : "질문이 마감되었습니다.";
+      deadlineWarningBox.classList.remove("hidden");
+    }
+
+    function hideDeadlineWarning() {
+      deadlineWarningBox.classList.add("hidden");
+    }
+
+    function showStudentError(msg) {
+      studentErrorText.textContent = msg;
+      studentErrorBox.classList.remove("hidden");
+    }
+
+    function hideStudentError() {
+      studentErrorBox.classList.add("hidden");
+    }
+
+    function setInputInvalid(inputEl, isInvalid) {
+      if (isInvalid) {
+        inputEl.classList.remove("border-slate-300", "focus:ring-indigo-500");
+        inputEl.classList.add("border-rose-500", "bg-rose-50", "focus:ring-rose-500");
+        inputEl.setAttribute("aria-invalid", "true");
+      } else {
+        inputEl.classList.remove("border-rose-500", "bg-rose-50", "focus:ring-rose-500");
+        inputEl.classList.add("border-slate-300", "focus:ring-indigo-500");
+        inputEl.removeAttribute("aria-invalid");
       }
     }
 
-    function updateClassButtonStyles() {
+    // 1~9반 선택 버튼 렌더링 (실시간 마감 상태 반영)
+    function renderClassButtons() {
+      if (selectedClass && isClassClosed(selectedClass)) {
+        const expiredClass = selectedClass;
+        selectedClass = null;
+        showDeadlineWarning(expiredClass);
+        showToast(`${expiredClass}반은 질문이 마감되었습니다.`);
+      }
+
       if (selectedClass) {
         selectedClassBadge.textContent = `${selectedClass}반 선택됨`;
         selectedClassBadge.classList.remove("hidden");
@@ -493,42 +650,98 @@
         selectedClassBadge.classList.add("hidden");
       }
 
-      Array.from(classSelector.children).forEach(btn => {
-        const isSelected = Number(btn.dataset.classNum) === selectedClass;
-        btn.className = isSelected
-          ? "py-3.5 rounded-xl border-2 border-indigo-600 font-bold text-base sm:text-lg bg-indigo-600 text-white shadow-sm transition"
-          : "py-3.5 rounded-xl border border-slate-200 font-semibold text-base sm:text-lg bg-white text-slate-700 hover:bg-indigo-50 transition";
-      });
+      classSelector.innerHTML = "";
+      for (let i = 1; i <= 9; i++) {
+        const info = getClassDeadlineInfo(i);
+        const closed = isClassClosed(i);
+        const isSelected = !closed && selectedClass === i;
+        const shortTime = info ? formatDeadlineShort(info.str) : "";
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.classNum = String(i);
+        btn.setAttribute("aria-disabled", closed ? "true" : "false");
+
+        if (closed) {
+          btn.className = "py-3.5 px-2 rounded-xl border border-rose-200 bg-slate-100 text-slate-400 cursor-not-allowed transition flex flex-col items-center justify-center gap-1";
+          btn.innerHTML = `
+            <span class="text-lg font-bold line-through">${i}반</span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-bold bg-rose-100 text-rose-600">마감</span>
+          `;
+        } else if (isSelected) {
+          btn.className = "py-3.5 px-2 rounded-xl border-2 border-indigo-600 bg-indigo-600 text-white shadow-sm transition flex flex-col items-center justify-center gap-1";
+          btn.innerHTML = `
+            <span class="text-lg font-bold">${i}반</span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-semibold bg-indigo-500 text-indigo-50">${shortTime ? escapeHtml(shortTime) : "상시"}</span>
+          `;
+        } else {
+          btn.className = "py-3.5 px-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 transition flex flex-col items-center justify-center gap-1";
+          btn.innerHTML = `
+            <span class="text-lg font-semibold">${i}반</span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-semibold ${shortTime ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-500"}">${shortTime ? escapeHtml(shortTime) : "상시"}</span>
+          `;
+        }
+
+        btn.addEventListener("click", () => {
+          if (isClassClosed(i)) {
+            if (selectedClass === i) selectedClass = null;
+            showDeadlineWarning(i);
+            showToast(`${i}반은 질문이 마감되었습니다.`);
+            renderClassButtons();
+            return;
+          }
+          selectedClass = i;
+          hideDeadlineWarning();
+          hideStudentError();
+          renderClassButtons();
+        });
+
+        classSelector.appendChild(btn);
+      }
     }
 
+    // 질문 입력 칸 추가 (반드시 type="text" inputmode="numeric" 사용)
     function addQuestionRow() {
       const row = document.createElement("div");
       row.className = "flex items-center gap-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200";
       row.innerHTML = `
         <div class="flex-1 min-w-0">
-          <input type="text" inputmode="numeric" autocomplete="off" placeholder="페이지 (예: 42)"
-            class="input-page w-full px-3.5 py-3 text-base sm:text-lg bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+          <input
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="페이지 (예: 42)"
+            aria-label="페이지 번호"
+            class="input-page w-full px-3.5 py-2.5 text-base sm:text-lg bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+          />
         </div>
         <div class="flex-1 min-w-0">
-          <input type="text" inputmode="numeric" autocomplete="off" placeholder="문제번호 (예: 15)"
-            class="input-prob w-full px-3.5 py-3 text-base sm:text-lg bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+          <input
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="문제번호 (예: 15)"
+            aria-label="문제 번호"
+            class="input-prob w-full px-3.5 py-2.5 text-base sm:text-lg bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+          />
         </div>
-        <button type="button" class="remove-row-btn w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 text-2xl font-bold transition shrink-0" title="행 삭제" aria-label="행 삭제">×</button>
+        <button type="button" class="remove-row-btn shrink-0 w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 text-2xl font-bold transition" title="이 칸 삭제" aria-label="이 칸 삭제">×</button>
       `;
 
       const pageInput = row.querySelector(".input-page");
       const probInput = row.querySelector(".input-prob");
 
-      // 입력 시 빨간 오류 표시 자동 해제
-      [pageInput, probInput].forEach(el => {
-        el.addEventListener("input", () => {
-          setInputInvalid(el, false);
-        });
-      });
+      const onInputEdit = (el) => {
+        setInputInvalid(el, false);
+        hideStudentError();
+      };
+      pageInput.addEventListener("input", () => onInputEdit(pageInput));
+      probInput.addEventListener("input", () => onInputEdit(probInput));
 
       row.querySelector(".remove-row-btn").addEventListener("click", () => {
         if (questionRows.children.length > 1) {
           row.remove();
+          hideStudentError();
         } else {
           showToast("최소 1개의 질문 칸은 필요합니다.");
         }
@@ -539,14 +752,16 @@
 
     function resetStudentForm() {
       selectedClass = null;
-      updateClassButtonStyles();
+      hideDeadlineWarning();
       hideStudentError();
+      renderClassButtons();
       questionRows.innerHTML = "";
       addQuestionRow();
     }
 
-    // 학생 질문 저장 처리 (엄격한 자연수 검증 + 중복 제거 + 중복 제출 방지)
+    // 학생 질문 제출 처리
     submitQuestionsBtn.addEventListener("click", async () => {
+      if (isSubmittingQuestions) return;
       hideStudentError();
 
       if (!selectedClass) {
@@ -555,28 +770,35 @@
         return;
       }
 
+      // 제출 직전 마감 여부 최종 확인
+      if (isClassClosed(selectedClass)) {
+        const expiredClass = selectedClass;
+        selectedClass = null;
+        renderClassButtons();
+        showDeadlineWarning(expiredClass);
+        showToast(`${expiredClass}반은 질문이 마감되었습니다.`);
+        return;
+      }
+
       const rows = Array.from(questionRows.children);
-      const uniqueMap = new Map();
-      let duplicateCount = 0;
-      let nonEmptyRowCount = 0;
       let hasInvalid = false;
       let firstInvalidInput = null;
+      const uniqueMap = new Map();
 
-      rows.forEach(row => {
+      for (const row of rows) {
         const pageInput = row.querySelector(".input-page");
         const probInput = row.querySelector(".input-prob");
+        const pageRaw = pageInput.value.trim();
+        const probRaw = probInput.value.trim();
+
         setInputInvalid(pageInput, false);
         setInputInvalid(probInput, false);
 
-        const pageVal = pageInput.value.trim();
-        const probVal = probInput.value.trim();
+        // 양쪽 모두 비어 있는 행은 무시
+        if (!pageRaw && !probRaw) continue;
 
-        // 두 칸이 모두 비어 있는 행은 무시
-        if (pageVal === "" && probVal === "") return;
-
-        nonEmptyRowCount += 1;
-        const pageValid = isPositiveInteger(pageVal);
-        const probValid = isPositiveInteger(probVal);
+        const pageValid = isPositiveInteger(pageRaw);
+        const probValid = isPositiveInteger(probRaw);
 
         if (!pageValid) {
           setInputInvalid(pageInput, true);
@@ -590,13 +812,10 @@
         }
 
         if (pageValid && probValid) {
-          const pageNum = Number(pageVal);
-          const probNum = Number(probVal);
+          const pageNum = Number(pageRaw);
+          const probNum = Number(probRaw);
           const key = `${pageNum}__${probNum}`;
-
-          if (uniqueMap.has(key)) {
-            duplicateCount += 1;
-          } else {
+          if (!uniqueMap.has(key)) {
             uniqueMap.set(key, {
               classNum: Number(selectedClass),
               page: pageNum,
@@ -606,64 +825,61 @@
             });
           }
         }
-      });
-
-      // 아무 행에도 입력하지 않은 경우 첫 행 강조
-      if (nonEmptyRowCount === 0 && rows.length > 0) {
-        const firstPage = rows[0].querySelector(".input-page");
-        const firstProb = rows[0].querySelector(".input-prob");
-        setInputInvalid(firstPage, true);
-        setInputInvalid(firstProb, true);
-        showStudentError(VALIDATION_ERROR_MSG);
-        showToast(VALIDATION_ERROR_MSG);
-        firstPage.focus();
-        return;
       }
 
+      const warnMsg = "페이지와 문제번호를 다시 확인해 주세요. (1 이상의 자연수만 입력 가능합니다.)";
+
       if (hasInvalid) {
-        showStudentError(VALIDATION_ERROR_MSG);
-        showToast(VALIDATION_ERROR_MSG);
+        showStudentError(warnMsg);
+        showToast(warnMsg);
         if (firstInvalidInput) firstInvalidInput.focus();
         return;
       }
 
-      const validItems = Array.from(uniqueMap.values());
+      const itemsToSave = Array.from(uniqueMap.values());
+      if (itemsToSave.length === 0) {
+        const firstPageInput = questionRows.querySelector(".input-page");
+        if (firstPageInput) {
+          setInputInvalid(firstPageInput, true);
+          firstPageInput.focus();
+        }
+        showStudentError(warnMsg);
+        showToast(warnMsg);
+        return;
+      }
+
+      isSubmittingQuestions = true;
       submitQuestionsBtn.disabled = true;
       submitQuestionsBtn.textContent = "저장 중...";
 
       try {
         await Promise.all(
-          validItems.map(item => addDoc(collection(db, COLLECTION_NAME), item))
+          itemsToSave.map(item => addDoc(collection(db, COLLECTION_NAME), item))
         );
-        if (duplicateCount > 0) {
-          showToast(`중복 입력 ${duplicateCount}건 제외, ${selectedClass}반 질문 ${validItems.length}건이 등록되었습니다!`);
-        } else {
-          showToast(`${selectedClass}반 질문 ${validItems.length}건이 성공적으로 등록되었습니다!`);
-        }
+        showToast(`${selectedClass}반 질문 ${itemsToSave.length}건이 등록되었습니다!`);
         resetStudentForm();
         showView("home");
       } catch (err) {
-        console.error("Firestore 저장 오류:", err);
-        if (err && err.code === "permission-denied") {
-          showToast("권한 오류: Firestore 보안 규칙(Rules)을 확인해 주세요.");
-        } else {
-          showToast("저장 중 오류가 발생했습니다. 네트워크 상태를 확인해 주세요.");
-        }
+        console.error("질문 저장 오류:", err);
+        showToast("저장 중 오류가 발생했습니다. 네트워크 또는 Firebase 권한을 확인해 주세요.");
       } finally {
+        isSubmittingQuestions = false;
         submitQuestionsBtn.disabled = false;
         submitQuestionsBtn.textContent = "질문하기 완료";
       }
     });
 
     // =========================================================================
-    // 6. 교사 로그인 / 로그아웃
+    // 6. 교사 로그인 및 로그아웃
     // =========================================================================
     function handleLogin() {
       if (passwordInput.value.trim() === TEACHER_PASSWORD) {
         sessionStorage.setItem("teacherAuth", "true");
         loginError.classList.add("hidden");
         passwordInput.value = "";
+        dirtyDeadlineClasses.clear();
         renderTeacherTabs();
+        renderDeadlineSettingsPanel();
         renderSubClassFilter();
         renderSolvedFilterButtons();
         updateExcelButtonLabel();
@@ -677,21 +893,17 @@
 
     function handleLogout() {
       sessionStorage.removeItem("teacherAuth");
-      stopRealtimeListener();
+      dirtyDeadlineClasses.clear();
       showToast("로그아웃되었습니다.");
       showView("home");
     }
 
     // =========================================================================
-    // 7. 교사 실시간 대시보드 로직
+    // 7. 교사 대시보드 (선생님 탭, 반별 마감 설정, 필터, 실시간 질문 집계)
     // =========================================================================
-    function getSelectedTeacher() {
-      return TEACHERS.find(t => t.id === selectedTeacherId) || TEACHERS[0];
-    }
-
     function updateExcelButtonLabel() {
       const teacher = getSelectedTeacher();
-      downloadExcelLabel.textContent = `${teacher.label} 전체 엑셀 다운로드 (.xlsx)`;
+      downloadExcelLabel.textContent = `${teacher.name}T 전체 엑셀 다운로드`;
     }
 
     function renderTeacherTabs() {
@@ -701,22 +913,217 @@
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = isSelected
-          ? "py-3 px-2.5 rounded-xl bg-indigo-600 text-white shadow-sm transition"
-          : "py-3 px-2.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition";
+          ? "py-3 px-2.5 rounded-xl bg-indigo-600 text-white font-bold text-base shadow-sm transition"
+          : "py-3 px-2.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold text-base transition";
         btn.innerHTML = `
-          <div class="text-base sm:text-lg font-bold">${escapeHtml(t.label)}</div>
-          <div class="text-xs sm:text-sm ${isSelected ? 'text-indigo-100' : 'text-slate-500'} font-normal mt-0.5">${t.classes.join(", ")}반</div>
+          <div>${escapeHtml(t.name)} T</div>
+          <div class="text-sm opacity-85 font-normal mt-0.5">${t.classes.join(", ")}반</div>
         `;
         btn.addEventListener("click", () => {
           selectedTeacherId = t.id;
           selectedSubClass = "ALL";
+          dirtyDeadlineClasses.clear();
           renderTeacherTabs();
+          renderDeadlineSettingsPanel();
           renderSubClassFilter();
           updateExcelButtonLabel();
           renderQuestionList();
         });
         teacherTabs.appendChild(btn);
       });
+    }
+
+    function getDeadlineStatusMeta(classNum) {
+      const info = getClassDeadlineInfo(classNum);
+      if (!info) {
+        return {
+          text: "상시",
+          className: "px-3 py-1 rounded-full text-sm font-bold bg-slate-100 text-slate-600"
+        };
+      }
+      const shortTime = formatDeadlineShort(info.str);
+      if (Date.now() >= info.ms) {
+        return {
+          text: `마감됨 (${shortTime})`,
+          className: "px-3 py-1 rounded-full text-sm font-bold bg-rose-100 text-rose-700"
+        };
+      }
+      return {
+        text: `진행 중 (${shortTime})`,
+        className: "px-3 py-1 rounded-full text-sm font-bold bg-emerald-100 text-emerald-700"
+      };
+    }
+
+    // 실시간 스냅샷 또는 10초 타이머 갱신 시, 포커스 중이거나 미저장 편집 중인 input은 절대 덮어쓰지 않고 배지만 갱신
+    function syncTeacherDeadlinePanelFromSnapshot() {
+      const teacher = getSelectedTeacher();
+      teacher.classes.forEach(cls => {
+        const badge = deadlineSettingsList.querySelector(`[data-deadline-badge-class="${cls}"]`);
+        if (badge) {
+          const meta = getDeadlineStatusMeta(cls);
+          badge.textContent = meta.text;
+          badge.className = meta.className;
+        }
+
+        const inputEl = deadlineSettingsList.querySelector(`[data-deadline-input-class="${cls}"]`);
+        if (!inputEl) return;
+
+        const isFocused = document.activeElement === inputEl;
+        const isDirty = dirtyDeadlineClasses.has(cls);
+        if (!isFocused && !isDirty) {
+          const info = getClassDeadlineInfo(cls);
+          inputEl.value = info ? info.str : "";
+        }
+      });
+    }
+
+    function updateTeacherDeadlineBadgesOnly() {
+      const badges = deadlineSettingsList.querySelectorAll("[data-deadline-badge-class]");
+      badges.forEach(badge => {
+        const cls = Number(badge.dataset.deadlineBadgeClass);
+        const meta = getDeadlineStatusMeta(cls);
+        badge.textContent = meta.text;
+        badge.className = meta.className;
+      });
+    }
+
+    // 담당 반별 질문 마감 시간 설정 패널 렌더링
+    function renderDeadlineSettingsPanel() {
+      const teacher = getSelectedTeacher();
+      deadlinePanelTitle.textContent = `반별 질문 마감 시간 설정 (${teacher.classes.join(", ")}반)`;
+      deadlineSettingsList.innerHTML = "";
+
+      teacher.classes.forEach(cls => {
+        const info = getClassDeadlineInfo(cls);
+        const currentStr = info ? info.str : "";
+        const meta = getDeadlineStatusMeta(cls);
+
+        const row = document.createElement("div");
+        row.className = "bg-white border border-indigo-100 rounded-xl p-3.5 shadow-sm flex flex-col gap-3";
+        row.innerHTML = `
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <span class="text-lg font-extrabold text-slate-800">${cls}반</span>
+            <span data-deadline-badge-class="${cls}" class="${meta.className}">${escapeHtml(meta.text)}</span>
+          </div>
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <input
+              type="datetime-local"
+              value="${escapeHtml(currentStr)}"
+              data-deadline-input-class="${cls}"
+              aria-label="${cls}반 질문 마감 일시"
+              class="deadline-input flex-1 min-w-0 px-3 py-2.5 text-base bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <div class="flex items-center gap-2 shrink-0">
+              <button type="button" class="save-deadline-btn flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-base font-bold transition disabled:opacity-50">
+                저장
+              </button>
+              <button type="button" class="clear-deadline-btn flex-1 sm:flex-none px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-base font-semibold transition disabled:opacity-50">
+                마감 해제
+              </button>
+            </div>
+          </div>
+        `;
+
+        const inputEl = row.querySelector(".deadline-input");
+        const saveBtn = row.querySelector(".save-deadline-btn");
+        const clearBtn = row.querySelector(".clear-deadline-btn");
+
+        inputEl.addEventListener("input", () => {
+          dirtyDeadlineClasses.add(cls);
+        });
+        inputEl.addEventListener("change", () => {
+          dirtyDeadlineClasses.add(cls);
+        });
+
+        saveBtn.addEventListener("click", async () => {
+          const val = inputEl.value.trim();
+          const parsedDate = parseLocalDateTime(val);
+          if (!parsedDate) {
+            showToast(`${cls}반의 마감 날짜와 시간을 선택해 주세요.`);
+            inputEl.focus();
+            return;
+          }
+          saveBtn.disabled = true;
+          clearBtn.disabled = true;
+          try {
+            await saveClassDeadline(cls, { str: val, ms: parsedDate.getTime() });
+            dirtyDeadlineClasses.delete(cls);
+            showToast(`${cls}반 질문 마감 시간이 ${formatDeadlineShort(val)}로 저장되었습니다.`);
+          } catch (err) {
+            console.error("마감 시간 저장 오류:", err);
+            showToast("마감 시간 저장 중 오류가 발생했습니다.");
+          } finally {
+            saveBtn.disabled = false;
+            clearBtn.disabled = false;
+          }
+        });
+
+        clearBtn.addEventListener("click", async () => {
+          saveBtn.disabled = true;
+          clearBtn.disabled = true;
+          try {
+            await saveClassDeadline(cls, null);
+            dirtyDeadlineClasses.delete(cls);
+            inputEl.value = "";
+            showToast(`${cls}반 질문 마감이 해제되었습니다.`);
+          } catch (err) {
+            console.error("마감 해제 오류:", err);
+            showToast("마감 해제 중 오류가 발생했습니다.");
+          } finally {
+            saveBtn.disabled = false;
+            clearBtn.disabled = false;
+          }
+        });
+
+        deadlineSettingsList.appendChild(row);
+      });
+    }
+
+    // Firestore deadline_settings 문서에 class_{c} 키로 병합 저장 (해제 시 null 저장)
+    async function saveClassDeadline(classNum, deadlinePayload) {
+      await setDoc(
+        doc(db, COLLECTION_NAME, DEADLINE_DOC_ID),
+        {
+          [`class_${classNum}`]: deadlinePayload === null ? null : deadlinePayload
+        },
+        { merge: true }
+      );
+    }
+
+    // 마감 설정 실시간 구독 (학생/교사 화면 모두 실시간 반영)
+    function startDeadlineListener() {
+      if (unsubscribeDeadlines) return;
+      unsubscribeDeadlines = onSnapshot(
+        doc(db, COLLECTION_NAME, DEADLINE_DOC_ID),
+        (docSnap) => {
+          deadlineDocData = docSnap.exists() ? (docSnap.data() || {}) : {};
+
+          if (currentViewName === "student") {
+            renderClassButtons();
+          } else if (currentViewName === "teacher") {
+            if (deadlineSettingsList.children.length === 0) {
+              renderDeadlineSettingsPanel();
+            } else {
+              syncTeacherDeadlinePanelFromSnapshot();
+            }
+          }
+        },
+        (err) => {
+          console.error("마감 설정 실시간 구독 오류:", err);
+        }
+      );
+    }
+
+    // 10초 주기 자동 갱신 타이머
+    function startDeadlineClock() {
+      if (deadlineCheckTimer) return;
+      deadlineCheckTimer = setInterval(() => {
+        if (currentViewName === "student") {
+          renderClassButtons();
+        } else if (currentViewName === "teacher") {
+          updateTeacherDeadlineBadgesOnly();
+        }
+      }, DEADLINE_REFRESH_MS);
     }
 
     function renderSubClassFilter() {
@@ -734,8 +1141,8 @@
         btn.type = "button";
         btn.textContent = opt.label;
         btn.className = isSelected
-          ? "px-3.5 py-2 rounded-xl bg-slate-800 text-white text-sm sm:text-base font-bold transition"
-          : "px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm sm:text-base font-semibold transition";
+          ? "px-3.5 py-2 rounded-xl bg-slate-800 text-white text-base font-bold transition"
+          : "px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 text-base font-medium transition";
         btn.addEventListener("click", () => {
           selectedSubClass = opt.value;
           renderSubClassFilter();
@@ -753,8 +1160,8 @@
         btn.type = "button";
         btn.textContent = opt.label;
         btn.className = isSelected
-          ? "px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-sm sm:text-base font-bold shadow-sm transition"
-          : "px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 text-sm sm:text-base font-semibold transition";
+          ? "px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-sm sm:text-base font-bold shadow-sm transition"
+          : "px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm sm:text-base font-medium transition";
         btn.addEventListener("click", () => {
           solvedFilterMode = opt.value;
           renderSolvedFilterButtons();
@@ -764,18 +1171,19 @@
       });
     }
 
-    // Firestore 실시간 구독 (orderBy를 사용하지 않아 pending/누락 createdAt 문서도 절대 누락되지 않음)
+    // Firestore 실시간 구독 (orderBy 미사용 -> 클라이언트 정렬로 색인 불필요 및 pending 문서 보호)
     function startRealtimeListener() {
-      if (unsubscribe) return;
+      if (unsubscribeQuestions) return;
       firestoreErrorBanner.classList.add("hidden");
       setConnectionStatus("connecting");
 
-      unsubscribe = onSnapshot(
+      unsubscribeQuestions = onSnapshot(
         collection(db, COLLECTION_NAME),
         (snapshot) => {
           firestoreErrorBanner.classList.add("hidden");
           setConnectionStatus("connected");
           allQuestions = snapshot.docs
+            .filter(d => !isSettingsDoc(d.id))
             .map(d => ({ id: d.id, ...d.data() }))
             .sort((a, b) => getTimestampMillis(b.createdAt) - getTimestampMillis(a.createdAt));
           renderQuestionList();
@@ -795,190 +1203,190 @@
     }
 
     function stopRealtimeListener() {
-      if (unsubscribe) {
-        unsubscribe();
-        unsubscribe = null;
+      if (unsubscribeQuestions) {
+        unsubscribeQuestions();
+        unsubscribeQuestions = null;
       }
     }
 
     function getFilteredQuestions() {
       const teacher = getSelectedTeacher();
       const targetClasses = selectedSubClass === "ALL" ? teacher.classes : [selectedSubClass];
-      return allQuestions.filter(q => targetClasses.includes(Number(q.classNum)));
+      return allQuestions.filter(q => {
+        if (isSettingsDoc(q.id)) return false;
+        const cls = Number(q.classNum);
+        const page = Number(q.page);
+        const prob = Number(q.problemNum);
+        return (
+          Number.isFinite(cls) &&
+          Number.isFinite(page) &&
+          Number.isFinite(prob) &&
+          targetClasses.includes(cls)
+        );
+      });
     }
 
-    function formatBreakdown(classBreakdown) {
-      return Object.entries(classBreakdown)
-        .sort((a, b) => Number(a[0]) - Number(b[0]))
-        .map(([cls, cnt]) => `${cls}반(${cnt})`)
-        .join(" · ");
-    }
-
-    // 동일 질문(페이지 + 문제번호) 합산 및 정렬
-    function aggregateQuestions(items, sortBy = "count", solvedMode = "all") {
+    // 동일 질문(페이지 + 문제번호) 집계
+    function aggregateQuestions(items) {
       const groupedMap = new Map();
 
       items.forEach(item => {
-        const pageNum = Number(item.page);
-        const probNum = Number(item.problemNum);
-        if (!Number.isFinite(pageNum) || !Number.isFinite(probNum)) return;
+        if (isSettingsDoc(item.id)) return;
+        const page = Number(item.page);
+        const problemNum = Number(item.problemNum);
+        const classNum = Number(item.classNum);
+        if (!Number.isFinite(page) || !Number.isFinite(problemNum) || !Number.isFinite(classNum)) {
+          return;
+        }
 
-        const key = `${pageNum}__${probNum}`;
+        const key = `${page}__${problemNum}`;
         if (!groupedMap.has(key)) {
           groupedMap.set(key, {
-            page: pageNum,
-            problemNum: probNum,
-            docs: [],
-            classBreakdown: {}
+            page,
+            problemNum,
+            count: 0,
+            docIds: [],
+            classBreakdown: {},
+            isSolved: true
           });
         }
+
         const group = groupedMap.get(key);
-        group.docs.push(item);
-
-        const cls = Number(item.classNum);
-        if (Number.isFinite(cls)) {
-          group.classBreakdown[cls] = (group.classBreakdown[cls] || 0) + 1;
+        group.count += 1;
+        group.docIds.push(item.id);
+        group.classBreakdown[classNum] = (group.classBreakdown[classNum] || 0) + 1;
+        // 그룹 내 모든 문서가 solved === true 일 때만 완료 처리
+        if (item.solved !== true) {
+          group.isSolved = false;
         }
       });
 
-      const groupedList = Array.from(groupedMap.values()).map(g => ({
-        page: g.page,
-        problemNum: g.problemNum,
-        count: g.docs.length,
-        docIds: g.docs.map(d => d.id),
-        classBreakdown: g.classBreakdown,
-        // 그룹 내 모든 문서가 solved === true 일 때만 완료 처리 (새 질문이 들어오면 자동 미완료 복귀)
-        isSolved: g.docs.length > 0 && g.docs.every(d => d.solved === true)
-      }));
-
-      groupedList.sort((a, b) => {
-        if (solvedMode === "bottom" && a.isSolved !== b.isSolved) {
-          return a.isSolved ? 1 : -1;
-        }
-        if (sortBy === "count" && b.count !== a.count) {
-          return b.count - a.count;
-        }
-        if (a.page !== b.page) {
-          return a.page - b.page;
-        }
-        return a.problemNum - b.problemNum;
-      });
-
-      return groupedList;
+      return Array.from(groupedMap.values());
     }
 
     function renderQuestionList() {
       const teacher = getSelectedTeacher();
       const filtered = getFilteredQuestions();
-      const allGrouped = aggregateQuestions(filtered, sortSelect.value, solvedFilterMode);
+      const allGrouped = aggregateQuestions(filtered);
 
       const solvedCount = allGrouped.filter(g => g.isSolved).length;
       const unsolvedCount = allGrouped.length - solvedCount;
-      const visibleList = solvedFilterMode === "hide"
-        ? allGrouped.filter(g => !g.isSolved)
-        : allGrouped;
 
       filterStatusText.textContent = selectedSubClass === "ALL"
-        ? `${teacher.label} 담당 반 전체 (${teacher.classes.join(", ")}반)`
-        : `${teacher.label} · ${selectedSubClass}반`;
+        ? `${teacher.name} T · 담당 반 전체 (${teacher.classes.join(", ")}반)`
+        : `${teacher.name} T · ${selectedSubClass}반`;
 
       summaryCount.textContent = `미완료 ${unsolvedCount}종 · 완료 ${solvedCount}종 (총 ${filtered.length}건)`;
       clearFilteredBtn.disabled = filtered.length === 0;
 
-      if (visibleList.length === 0) {
-        const emptyText = allGrouped.length > 0 && solvedFilterMode === "hide"
-          ? "모든 질문이 풀이 완료되었습니다! ('완료 맨 아래로' 또는 '기본 순서'에서 확인할 수 있습니다.)"
-          : "등록된 질문이 없습니다.";
+      // 풀이 완료 필터 적용
+      let displayList = allGrouped.slice();
+      if (solvedFilterMode === "hide") {
+        displayList = displayList.filter(g => !g.isSolved);
+      }
 
+      // 정렬 적용
+      const sortBy = sortSelect.value;
+      displayList.sort((a, b) => {
+        if (solvedFilterMode === "bottom" && a.isSolved !== b.isSolved) {
+          return a.isSolved ? 1 : -1;
+        }
+        if (sortBy === "count" && b.count !== a.count) {
+          return b.count - a.count;
+        }
+        if (a.page !== b.page) return a.page - b.page;
+        return a.problemNum - b.problemNum;
+      });
+
+      if (displayList.length === 0) {
+        const emptyMsg = allGrouped.length > 0 && solvedFilterMode === "hide"
+          ? "모든 질문의 풀이가 완료되었습니다!"
+          : "등록된 질문이 없습니다.";
         questionList.innerHTML = `
-          <div class="text-center py-12 px-4 text-slate-400 text-base bg-slate-50 rounded-2xl border border-dashed border-slate-200 leading-relaxed">
-            ${escapeHtml(emptyText)}
+          <div class="text-center py-14 text-slate-400 text-lg font-medium bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            ${escapeHtml(emptyMsg)}
           </div>
         `;
         return;
       }
 
       questionList.innerHTML = "";
-      visibleList.forEach(g => {
+      displayList.forEach(g => {
+        const breakdownText = Object.entries(g.classBreakdown)
+          .sort((a, b) => Number(a[0]) - Number(b[0]))
+          .map(([cls, cnt]) => `${cls}반(${cnt})`)
+          .join(" · ");
+
         const isSolved = g.isSolved;
-        const breakdownText = formatBreakdown(g.classBreakdown);
-
-        let badgeStyle = "bg-indigo-100 text-indigo-700";
-        if (isSolved) {
-          badgeStyle = "bg-slate-200 text-slate-500";
-        } else if (g.count >= 3) {
-          badgeStyle = "bg-rose-100 text-rose-700";
-        }
-
-        const pageClass = isSolved
-          ? "text-xl sm:text-2xl font-extrabold text-slate-400 line-through"
-          : "text-xl sm:text-2xl font-extrabold text-slate-800";
-        const probClass = isSolved
-          ? "text-xl sm:text-2xl font-extrabold text-slate-400 line-through"
-          : "text-xl sm:text-2xl font-extrabold text-indigo-700";
-        const solveBtnClass = isSolved
-          ? "solve-group-btn text-sm sm:text-base font-bold bg-emerald-600 text-white hover:bg-emerald-700 px-3.5 py-2 rounded-xl shadow-sm transition disabled:opacity-50"
-          : "solve-group-btn text-sm sm:text-base font-bold text-slate-700 bg-white hover:bg-emerald-50 hover:text-emerald-700 px-3.5 py-2 rounded-xl border border-slate-300 hover:border-emerald-400 transition disabled:opacity-50";
-        const solveBtnText = isSolved ? "✓ 풀이 완료" : "풀이 완료";
-
         const card = document.createElement("div");
-        card.className = `flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 sm:p-5 rounded-2xl border transition shadow-sm ${
-          isSolved
-            ? "bg-slate-50/80 border-emerald-200"
-            : "bg-white border-slate-200 hover:border-indigo-300"
-        }`;
+        card.className = isSolved
+          ? "flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 sm:p-5 bg-emerald-50/40 border border-emerald-200 rounded-2xl transition shadow-sm"
+          : "flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 sm:p-5 bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 transition shadow-sm";
+
+        const titleStyle = isSolved
+          ? "line-through text-slate-400"
+          : "text-slate-800";
+        const probStyle = isSolved
+          ? "line-through text-slate-400"
+          : "text-indigo-700";
+        const countBadgeStyle = isSolved
+          ? "bg-slate-200 text-slate-500"
+          : (g.count >= 3 ? "bg-rose-100 text-rose-700" : "bg-indigo-100 text-indigo-700");
+        const solvedBtnStyle = isSolved
+          ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600"
+          : "bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border-slate-300 hover:border-emerald-400";
 
         card.innerHTML = `
           <div class="min-w-0">
-            <div class="flex items-center gap-2.5">
-              <span class="${pageClass}">p.${escapeHtml(g.page)}</span>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <span class="text-xl sm:text-2xl font-bold ${titleStyle}">p.${g.page}</span>
               <span class="text-slate-300 text-lg">|</span>
-              <span class="${probClass}">${escapeHtml(g.problemNum)}번</span>
+              <span class="text-xl sm:text-2xl font-bold ${probStyle}">${g.problemNum}번</span>
+              <span class="px-3.5 py-1 rounded-full text-lg sm:text-xl font-extrabold ${countBadgeStyle}">
+                질문 ${g.count}회
+              </span>
             </div>
-            <div class="text-sm sm:text-base text-slate-500 mt-1 truncate">${escapeHtml(breakdownText)}</div>
+            <div class="text-base text-slate-500 mt-1.5 font-medium">${escapeHtml(breakdownText)}</div>
           </div>
-          <div class="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 shrink-0">
-            <span class="px-4 py-1.5 rounded-full text-lg sm:text-xl font-extrabold ${badgeStyle}">
-              질문 ${g.count}회
-            </span>
-            <div class="flex items-center gap-2">
-              <button type="button" class="${solveBtnClass}" title="풀이 완료 상태 전환">
-                ${solveBtnText}
-              </button>
-              <button type="button" class="delete-group-btn text-sm sm:text-base font-bold text-rose-600 hover:text-white hover:bg-rose-600 bg-white px-3.5 py-2 rounded-xl border border-rose-200 hover:border-rose-600 transition" title="질문 삭제 (비밀번호 필요)">
-                질문 삭제
-              </button>
-            </div>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <button type="button" class="toggle-solved-btn flex-1 sm:flex-none px-4 py-2.5 rounded-xl border text-base font-bold transition disabled:opacity-50 ${solvedBtnStyle}">
+              ${isSolved ? "✓ 풀이 완료" : "풀이 완료"}
+            </button>
+            <button type="button" class="delete-group-btn flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-600 text-rose-600 hover:text-white text-base font-bold transition">
+              질문 삭제
+            </button>
           </div>
         `;
 
-        // 풀이 완료 토글 버튼 이벤트
-        const solveBtn = card.querySelector(".solve-group-btn");
-        solveBtn.addEventListener("click", async () => {
-          const nextSolved = !isSolved;
-          solveBtn.disabled = true;
+        // 풀이 완료 토글 (중복 클릭 방지 + 450건 배치 처리)
+        const toggleBtn = card.querySelector(".toggle-solved-btn");
+        toggleBtn.addEventListener("click", async () => {
+          toggleBtn.disabled = true;
           try {
+            const nextSolved = !isSolved;
             await updateSolvedInBatches(g.docIds, nextSolved);
             showToast(
               nextSolved
-                ? `p.${g.page} ${g.problemNum}번을 풀이 완료로 표시했습니다.`
+                ? `p.${g.page} ${g.problemNum}번을 풀이 완료 처리했습니다.`
                 : `p.${g.page} ${g.problemNum}번의 풀이 완료를 해제했습니다.`
             );
           } catch (err) {
-            console.error("풀이 완료 상태 업데이트 오류:", err);
+            console.error("풀이 완료 상태 변경 오류:", err);
             showToast("상태 변경 중 오류가 발생했습니다.");
-            solveBtn.disabled = false;
+          } finally {
+            toggleBtn.disabled = false;
           }
         });
 
-        // 질문 삭제 버튼 이벤트 (비밀번호 확인 모달 호출)
+        // 질문 삭제 (비밀번호 18128 재입력 모달)
         card.querySelector(".delete-group-btn").addEventListener("click", () => {
           openDeleteModal({
             title: "질문 삭제 확인",
             message: `p.${g.page} ${g.problemNum}번 질문(${g.count}건)을 완전히 삭제합니다.\n삭제된 질문은 복구할 수 없습니다.`,
             onConfirm: async () => {
               await deleteDocIdsInBatches(g.docIds);
-              showToast(`p.${g.page} ${g.problemNum}번 질문이 삭제되었습니다.`);
+              showToast(`p.${g.page} ${g.problemNum}번 질문(${g.count}건)이 삭제되었습니다.`);
             }
           });
         });
@@ -987,21 +1395,23 @@
       });
     }
 
-    // 목록 비우기 버튼 (비밀번호 확인 모달 호출)
+    // 목록 일괄 비우기 버튼 (deadline_settings 절대 제외)
     clearFilteredBtn.addEventListener("click", () => {
       const teacher = getSelectedTeacher();
       const filtered = getFilteredQuestions();
       if (filtered.length === 0) return;
 
       const scopeLabel = selectedSubClass === "ALL"
-        ? `${teacher.label} 담당 반 전체`
-        : `${teacher.label} ${selectedSubClass}반`;
+        ? `${teacher.name} T 담당 반 전체(${teacher.classes.join(", ")}반)`
+        : `${selectedSubClass}반`;
 
       openDeleteModal({
         title: "목록 일괄 비우기",
         message: `${scopeLabel} 질문(${filtered.length}건)을 모두 삭제합니다.\n삭제된 질문은 복구할 수 없습니다.`,
         onConfirm: async () => {
-          const docIds = filtered.map(item => item.id);
+          const docIds = filtered
+            .filter(item => !isSettingsDoc(item.id))
+            .map(item => item.id);
           await deleteDocIdsInBatches(docIds);
           showToast(`${scopeLabel} 질문 ${docIds.length}건이 모두 삭제되었습니다.`);
         }
@@ -1009,7 +1419,7 @@
     });
 
     // =========================================================================
-    // 8. 교사 삭제용 비밀번호 확인 모달 제어
+    // 8. 비밀번호 재입력 삭제 확인 모달
     // =========================================================================
     function openDeleteModal({ title, message, onConfirm }) {
       deleteModalTitle.textContent = title;
@@ -1019,22 +1429,19 @@
       deleteConfirmBtn.disabled = false;
       deleteConfirmBtn.textContent = "삭제 실행";
       pendingDeleteCallback = onConfirm;
-
       deleteModal.classList.remove("hidden");
       setTimeout(() => deletePasswordInput.focus(), 50);
     }
 
     function closeDeleteModal() {
-      if (deleteConfirmBtn.disabled) return;
       deleteModal.classList.add("hidden");
+      pendingDeleteCallback = null;
       deletePasswordInput.value = "";
       deletePasswordError.classList.add("hidden");
-      pendingDeleteCallback = null;
     }
 
-    async function executePendingDelete() {
+    async function confirmDeleteModal() {
       if (!pendingDeleteCallback) return;
-
       if (deletePasswordInput.value.trim() !== TEACHER_PASSWORD) {
         deletePasswordError.classList.remove("hidden");
         deletePasswordInput.focus();
@@ -1048,20 +1455,20 @@
 
       try {
         await pendingDeleteCallback();
-        deleteConfirmBtn.disabled = false;
         closeDeleteModal();
       } catch (err) {
-        console.error("Firestore 삭제 오류:", err);
-        showToast("삭제 중 오류가 발생했습니다. 권한 설정을 확인해 주세요.");
+        console.error("질문 삭제 오류:", err);
+        showToast("삭제 중 오류가 발생했습니다. 네트워크를 확인해 주세요.");
         deleteConfirmBtn.disabled = false;
         deleteConfirmBtn.textContent = "삭제 실행";
       }
     }
 
     deleteCancelBtn.addEventListener("click", closeDeleteModal);
-    deleteConfirmBtn.addEventListener("click", executePendingDelete);
+    deleteConfirmBtn.addEventListener("click", confirmDeleteModal);
     deletePasswordInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") executePendingDelete();
+      if (e.key === "Enter") confirmDeleteModal();
+      if (e.key === "Escape") closeDeleteModal();
     });
     deleteModal.addEventListener("click", (e) => {
       if (e.target === deleteModal) closeDeleteModal();
@@ -1073,64 +1480,93 @@
     });
 
     // =========================================================================
-    // 9. 선생님별 전체 질문 엑셀 다운로드 (SheetJS)
+    // 9. 선생님별 전체 엑셀 다운로드 (SheetJS)
     // =========================================================================
     function downloadTeacherExcel() {
       if (typeof window.XLSX === "undefined") {
-        showToast("엑셀 라이브러리를 불러오지 못했습니다. 페이지를 새로고침해 주세요.");
+        showToast("엑셀 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.");
         return;
       }
 
       const teacher = getSelectedTeacher();
       const teacherItems = allQuestions
-        .filter(q => teacher.classes.includes(Number(q.classNum)))
+        .filter(q => {
+          if (isSettingsDoc(q.id)) return false;
+          const cls = Number(q.classNum);
+          const page = Number(q.page);
+          const prob = Number(q.problemNum);
+          return (
+            Number.isFinite(cls) &&
+            Number.isFinite(page) &&
+            Number.isFinite(prob) &&
+            teacher.classes.includes(cls)
+          );
+        })
         .sort((a, b) => getTimestampMillis(b.createdAt) - getTimestampMillis(a.createdAt));
 
       if (teacherItems.length === 0) {
-        showToast(`${teacher.label} 담당 반(${teacher.classes.join(", ")}반)에 다운로드할 질문이 없습니다.`);
+        showToast(`${teacher.name} T 담당 반에 등록된 질문이 없습니다.`);
         return;
       }
 
-      const now = new Date();
-      const yyyymmdd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
-      const fileName = `미적분1_부교재질문_${teacher.name}_${yyyymmdd}.xlsx`;
+      // 시트 1: 질문집계 (페이지 오름차순 -> 문항번호 오름차순)
+      const aggregated = aggregateQuestions(teacherItems).sort((a, b) => {
+        if (a.page !== b.page) return a.page - b.page;
+        return a.problemNum - b.problemNum;
+      });
 
-      // 시트 1: 질문집계 (페이지 오름차순, 문항번호 오름차순 정렬)
-      const grouped = aggregateQuestions(teacherItems, "page", "all");
-      const summaryRows = grouped.map(g => ({
-        "페이지": g.page,
-        "문항번호": g.problemNum,
-        "질문횟수": g.count,
-        "반별분포": formatBreakdown(g.classBreakdown),
-        "풀이완료": g.isSolved ? "완료" : "미완료"
-      }));
+      const summaryRows = aggregated.map(g => {
+        const breakdown = Object.entries(g.classBreakdown)
+          .sort((a, b) => Number(a[0]) - Number(b[0]))
+          .map(([cls, cnt]) => `${cls}반(${cnt})`)
+          .join(", ");
+        return {
+          "페이지": g.page,
+          "문항번호": g.problemNum,
+          "질문횟수": g.count,
+          "반별분포": breakdown,
+          "풀이완료": g.isSolved ? "완료" : "미완료"
+        };
+      });
 
-      // 시트 2: 원본내역 (등록일시 최신순 정렬)
+      // 시트 2: 원본내역 (등록일시 최신순, null createdAt은 "저장 중" 처리)
       const rawRows = teacherItems.map(item => ({
-        "반": `${item.classNum}반`,
+        "반": `${Number(item.classNum)}반`,
         "페이지": Number(item.page),
         "문항번호": Number(item.problemNum),
         "풀이완료": item.solved === true ? "완료" : "미완료",
-        "등록일시": formatTimestamp(item.createdAt)
+        "등록일시": formatTimestampKR(item.createdAt)
       }));
 
-      try {
-        const wb = window.XLSX.utils.book_new();
+      const workbook = window.XLSX.utils.book_new();
+      const wsSummary = window.XLSX.utils.json_to_sheet(summaryRows);
+      const wsRaw = window.XLSX.utils.json_to_sheet(rawRows);
 
-        const wsSummary = window.XLSX.utils.json_to_sheet(summaryRows);
-        wsSummary["!cols"] = [{ wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 28 }, { wch: 12 }];
-        window.XLSX.utils.book_append_sheet(wb, wsSummary, "질문집계");
+      wsSummary["!cols"] = [
+        { wch: 10 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 24 },
+        { wch: 12 }
+      ];
+      wsRaw["!cols"] = [
+        { wch: 8 },
+        { wch: 10 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 22 }
+      ];
 
-        const wsRaw = window.XLSX.utils.json_to_sheet(rawRows);
-        wsRaw["!cols"] = [{ wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 22 }];
-        window.XLSX.utils.book_append_sheet(wb, wsRaw, "원본내역");
+      window.XLSX.utils.book_append_sheet(workbook, wsSummary, "질문집계");
+      window.XLSX.utils.book_append_sheet(workbook, wsRaw, "원본내역");
 
-        window.XLSX.writeFile(wb, fileName);
-        showToast(`${teacher.label} 전체 질문 엑셀 파일이 다운로드되었습니다.`);
-      } catch (err) {
-        console.error("엑셀 다운로드 오류:", err);
-        showToast("엑셀 파일 생성 중 오류가 발생했습니다.");
-      }
+      const now = new Date();
+      const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+      const teacherNameNoSpace = teacher.name.replace(/\s+/g, "");
+      const filename = `미적분1_부교재질문_${teacherNameNoSpace}_${ymd}.xlsx`;
+
+      window.XLSX.writeFile(workbook, filename);
+      showToast(`${filename} 파일이 다운로드되었습니다.`);
     }
 
     // =========================================================================
@@ -1143,7 +1579,9 @@
 
     document.getElementById("goTeacherLoginBtn").addEventListener("click", () => {
       if (sessionStorage.getItem("teacherAuth") === "true") {
+        dirtyDeadlineClasses.clear();
         renderTeacherTabs();
+        renderDeadlineSettingsPanel();
         renderSubClassFilter();
         renderSolvedFilterButtons();
         updateExcelButtonLabel();
@@ -1154,6 +1592,13 @@
         showView("login");
         setTimeout(() => passwordInput.focus(), 50);
       }
+    });
+
+    toggleDeadlinePanelBtn.addEventListener("click", () => {
+      isDeadlinePanelOpen = !isDeadlinePanelOpen;
+      deadlinePanelBody.classList.toggle("hidden", !isDeadlinePanelOpen);
+      toggleDeadlinePanelBtn.setAttribute("aria-expanded", String(isDeadlinePanelOpen));
+      deadlinePanelChevron.textContent = isDeadlinePanelOpen ? "접기 ▲" : "펼치기 ▼";
     });
 
     btnHome.addEventListener("click", () => showView("home"));
@@ -1168,8 +1613,10 @@
     sortSelect.addEventListener("change", renderQuestionList);
     downloadExcelBtn.addEventListener("click", downloadTeacherExcel);
 
-    // 1~9반 버튼 초기화
-    initClassButtons();
+    // 초기 실행: 마감 설정 실시간 구독 + 10초 주기 타이머 + 반 선택 버튼 초기화
+    startDeadlineListener();
+    startDeadlineClock();
+    renderClassButtons();
   </script>
 </body>
 </html>
