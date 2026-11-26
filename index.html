@@ -6,8 +6,8 @@
   <title>미적분Ⅰ 부교재 질문 수합</title>
   <!-- Tailwind CSS v3 CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- SheetJS (xlsx) CDN -->
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <!-- SheetJS (xlsx 0.20.3) CDN -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <!-- Pretendard Font -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <script>
@@ -30,7 +30,7 @@
     <!-- 상단 헤더 -->
     <header class="bg-indigo-600 text-white px-5 py-5 sm:px-7 sm:py-6 flex items-center justify-between gap-3">
       <div class="min-w-0">
-        <h1 class="text-lg sm:text-xl font-bold tracking-tight truncate">미적분Ⅰ 부교재 질문</h1>
+        <h1 class="text-lg sm:text-xl font-bold tracking-tight truncate">미적분Ⅰ 부교재 질문 수합</h1>
         <p class="text-indigo-100 text-xs sm:text-sm mt-0.5">어려운 문제를 등록하면 수업 시간에 함께 풀이합니다.</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
@@ -76,7 +76,7 @@
           <span class="text-[11px] text-slate-500">1 이상의 자연수만 입력 (예: 42 / 15)</span>
         </div>
 
-        <!-- 입력 검증 경고 박스 -->
+        <!-- 입력 검증 경고 배너 -->
         <div id="studentValidationAlert" role="alert" class="hidden mb-3 p-3.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 text-xs sm:text-sm font-semibold flex items-start gap-2">
           <span class="shrink-0">⚠️</span>
           <span id="studentValidationAlertText">페이지와 문제번호를 다시 확인해 주세요. (1 이상의 자연수만 입력 가능합니다.)</span>
@@ -149,25 +149,36 @@
         </button>
       </div>
 
-      <!-- 담당 반 세부 필터 및 정렬 -->
-      <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-        <div id="subClassFilter" class="flex flex-wrap gap-1.5">
-          <!-- JS로 담당 반 필터 버튼 생성 -->
+      <!-- 담당 반 세부 필터, 풀이 완료 표시 필터 및 정렬 -->
+      <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-3">
+        <!-- 1행: 담당 반 필터 + 정렬 기준 -->
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div id="subClassFilter" class="flex flex-wrap gap-1.5">
+            <!-- JS로 담당 반 필터 버튼 생성 -->
+          </div>
+          <div class="ml-auto flex items-center gap-2">
+            <select id="sortSelect" aria-label="정렬 기준" class="text-xs font-semibold border border-slate-300 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="count">질문 많은 순</option>
+              <option value="page">페이지·번호 순</option>
+            </select>
+          </div>
         </div>
-        <div class="ml-auto flex items-center gap-2">
-          <select id="sortSelect" aria-label="정렬 기준" class="text-xs font-semibold border border-slate-300 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <option value="count">질문 많은 순</option>
-            <option value="page">페이지·번호 순</option>
-          </select>
+
+        <!-- 2행: 풀이 완료 표시 필터 -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-200/80">
+          <span class="text-[11px] font-bold text-slate-500">풀이 완료 표시</span>
+          <div id="solvedFilterGroup" class="flex flex-wrap gap-1.5" role="group" aria-label="풀이 완료 표시 필터">
+            <!-- JS로 '완료 맨 아래로' / '완료 숨기기' / '기본 순서' 버튼 생성 -->
+          </div>
         </div>
       </div>
 
       <!-- 요약 카운트 및 목록 비우기 -->
       <div class="flex flex-wrap items-center justify-between gap-2 text-xs px-1">
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span id="filterStatusText" class="text-slate-500 font-medium">담당 반 전체</span>
           <span class="text-slate-300">|</span>
-          <span id="summaryCount" class="font-bold text-slate-700">문제 0종 (총 0건)</span>
+          <span id="summaryCount" class="font-bold text-slate-700">미완료 0종 · 완료 0종 (총 0건)</span>
         </div>
         <button id="clearFilteredBtn" type="button" class="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 transition disabled:opacity-40 disabled:cursor-not-allowed">
           목록 비우기
@@ -254,10 +265,18 @@
       { id: "lee", name: "이창호", label: "이창호 T", classes: [7, 8, 9] }
     ];
 
+    // 풀이 완료 표시 필터 옵션
+    const SOLVED_FILTER_OPTIONS = [
+      { value: "bottom", label: "완료 맨 아래로" },
+      { value: "hide", label: "완료 숨기기" },
+      { value: "default", label: "기본 순서" }
+    ];
+
     // 앱 상태 변수
     let selectedClass = null;
     let selectedTeacherId = TEACHERS[0].id;
     let selectedSubClass = "ALL";
+    let solvedFilterMode = "bottom"; // 'bottom' | 'hide' | 'default'
     let allQuestions = [];
     let unsubscribe = null;
     let pendingDeleteAction = null;
@@ -283,6 +302,7 @@
     const loginError = document.getElementById("loginError");
     const teacherTabs = document.getElementById("teacherTabs");
     const subClassFilter = document.getElementById("subClassFilter");
+    const solvedFilterGroup = document.getElementById("solvedFilterGroup");
     const sortSelect = document.getElementById("sortSelect");
     const questionList = document.getElementById("questionList");
     const summaryCount = document.getElementById("summaryCount");
@@ -423,7 +443,7 @@
     });
 
     /**
-     * Firestore 450건 단위 배치 삭제 (Firestore 단일 배치 최대 500건 제한 대응)
+     * Firestore 450건 단위 배치 삭제 (단일 배치 최대 500건 제한 대응)
      */
     async function deleteDocIdsInBatches(docIds) {
       const CHUNK_SIZE = 450;
@@ -431,6 +451,19 @@
         const chunk = docIds.slice(i, i + CHUNK_SIZE);
         const batch = writeBatch(db);
         chunk.forEach(id => batch.delete(doc(db, COLLECTION_NAME, id)));
+        await batch.commit();
+      }
+    }
+
+    /**
+     * Firestore 450건 단위 배치 solved 상태 토글 업데이트
+     */
+    async function updateSolvedInBatches(docIds, nextSolved) {
+      const CHUNK_SIZE = 450;
+      for (let i = 0; i < docIds.length; i += CHUNK_SIZE) {
+        const chunk = docIds.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
+        chunk.forEach(id => batch.update(doc(db, COLLECTION_NAME, id), { solved: nextSolved }));
         await batch.commit();
       }
     }
@@ -520,7 +553,6 @@
       const pageInput = row.querySelector(".input-page");
       const probInput = row.querySelector(".input-prob");
 
-      // 다시 입력할 때 빨간 테두리 해제
       [pageInput, probInput].forEach(el => {
         el.addEventListener("input", () => {
           setInputErrorStyle(el, false);
@@ -561,7 +593,6 @@
       let hasInvalidInput = false;
       let firstInvalidInput = null;
 
-      // 모든 행 초기화 후 전수 검사
       rows.forEach(row => {
         const pageInput = row.querySelector(".input-page");
         const probInput = row.querySelector(".input-prob");
@@ -571,7 +602,7 @@
         const pageVal = pageInput.value.trim();
         const probVal = probInput.value.trim();
 
-        // 완전히 비어있는 행은 무시
+        // 완전히 비어 있는 행은 무시
         if (pageVal === "" && probVal === "") return;
 
         const isPageValid = isNaturalNumber(pageVal);
@@ -597,9 +628,10 @@
             duplicateCount += 1;
           } else {
             uniqueMap.set(dedupeKey, {
-              classNum: selectedClass,
+              classNum: Number(selectedClass),
               page: pageNum,
               problemNum: probNum,
+              solved: false,
               createdAt: serverTimestamp()
             });
           }
@@ -639,7 +671,7 @@
         if (err && err.code === "permission-denied") {
           showToast("권한 오류: Firestore 보안 규칙(Rules)을 확인해 주세요.");
         } else {
-          showToast("저장 중 오류가 발생했습니다. 네트워크 또는 Firebase 설정을 확인해 주세요.");
+          showToast("저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
         }
       } finally {
         submitQuestionsBtn.disabled = false;
@@ -648,7 +680,7 @@
     });
 
     // =========================================================================
-    // 교사 로그인 / 로그아웃 (비밀번호: 18128, sessionStorage 유지)
+    // 교사 로그인 / 로그아웃
     // =========================================================================
     function handleLogin() {
       if (passwordInput.value.trim() === TEACHER_PASSWORD) {
@@ -657,10 +689,12 @@
         passwordInput.value = "";
         renderTeacherTabs();
         renderSubClassFilter();
+        renderSolvedFilterButtons();
         updateExcelButtonUI();
         showView("teacher");
       } else {
         loginError.classList.remove("hidden");
+        passwordInput.focus();
         passwordInput.select();
       }
     }
@@ -673,7 +707,7 @@
     }
 
     // =========================================================================
-    // 교사 대시보드: 탭, 반별 필터, 실시간 연동, 집계 및 비밀번호 확인 삭제
+    // 교사 대시보드: 탭, 반별 필터, 풀이 완료 필터, 실시간 연동, 집계 및 삭제
     // =========================================================================
     function getSelectedTeacher() {
       return TEACHERS.find(t => t.id === selectedTeacherId) || TEACHERS[0];
@@ -736,6 +770,25 @@
       });
     }
 
+    function renderSolvedFilterButtons() {
+      solvedFilterGroup.innerHTML = "";
+      SOLVED_FILTER_OPTIONS.forEach(opt => {
+        const isSelected = solvedFilterMode === opt.value;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = opt.label;
+        btn.className = isSelected
+          ? "px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-sm transition"
+          : "px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 text-xs font-semibold transition";
+        btn.addEventListener("click", () => {
+          solvedFilterMode = opt.value;
+          renderSolvedFilterButtons();
+          renderQuestionList();
+        });
+        solvedFilterGroup.appendChild(btn);
+      });
+    }
+
     // Firestore 실시간 구독 시작
     function startRealtimeListener() {
       if (unsubscribe) return;
@@ -773,13 +826,15 @@
       }
     }
 
-    // 동일 질문 합산 및 정렬
-    function aggregateQuestions(items, sortBy = "count") {
+    // 동일 질문 합산 및 정렬 (solvedMode: 'bottom' | 'hide' | 'default')
+    function aggregateQuestions(items, sortBy = "count", solvedMode = "default") {
       const groupedMap = new Map();
 
       items.forEach(item => {
         const pageNum = Number(item.page);
         const probNum = Number(item.problemNum);
+        if (!Number.isFinite(pageNum) || !Number.isFinite(probNum)) return;
+
         const key = `${pageNum}__${probNum}`;
         if (!groupedMap.has(key)) {
           groupedMap.set(key, {
@@ -787,19 +842,34 @@
             problemNum: probNum,
             count: 0,
             docIds: [],
-            classBreakdown: {}
+            classBreakdown: {},
+            solvedCount: 0
           });
         }
         const group = groupedMap.get(key);
         group.count += 1;
         group.docIds.push(item.id);
+        if (item.solved === true) {
+          group.solvedCount += 1;
+        }
         const cls = Number(item.classNum);
-        group.classBreakdown[cls] = (group.classBreakdown[cls] || 0) + 1;
+        if (Number.isFinite(cls)) {
+          group.classBreakdown[cls] = (group.classBreakdown[cls] || 0) + 1;
+        }
       });
 
-      const groupedList = Array.from(groupedMap.values());
+      // 그룹 내 모든 문서가 solved === true일 때만 완료로 간주
+      // (완료 후 새 학생이 같은 문제를 다시 질문하면 자동으로 미완료로 전환됨)
+      const groupedList = Array.from(groupedMap.values()).map(g => ({
+        ...g,
+        solved: g.count > 0 && g.solvedCount === g.count
+      }));
 
+      // 정렬 적용
       groupedList.sort((a, b) => {
+        if (solvedMode === "bottom" && a.solved !== b.solved) {
+          return a.solved ? 1 : -1;
+        }
         if (sortBy === "count" && b.count !== a.count) {
           return b.count - a.count;
         }
@@ -846,61 +916,110 @@
     function renderQuestionList() {
       const teacher = getSelectedTeacher();
       const filtered = getFilteredQuestions();
-      const groupedList = aggregateQuestions(filtered, sortSelect.value);
+      const allGrouped = aggregateQuestions(filtered, sortSelect.value, solvedFilterMode);
+
+      const solvedGroupsCount = allGrouped.filter(g => g.solved).length;
+      const unsolvedGroupsCount = allGrouped.length - solvedGroupsCount;
+      const visibleList = solvedFilterMode === "hide"
+        ? allGrouped.filter(g => !g.solved)
+        : allGrouped;
 
       filterStatusText.textContent = selectedSubClass === "ALL"
         ? `${teacher.name}T 담당 반 전체 (${teacher.classes.join(", ")}반)`
         : `${teacher.name}T · ${selectedSubClass}반`;
 
-      summaryCount.textContent = `문제 ${groupedList.length}종 (총 ${filtered.length}건)`;
+      summaryCount.textContent = `미완료 ${unsolvedGroupsCount}종 · 완료 ${solvedGroupsCount}종 (총 ${filtered.length}건)`;
       clearFilteredBtn.disabled = filtered.length === 0;
 
-      if (groupedList.length === 0) {
+      if (visibleList.length === 0) {
+        const emptyMessage = allGrouped.length > 0 && solvedFilterMode === "hide"
+          ? "모든 질문이 풀이 완료되었습니다! ('완료 맨 아래로' 또는 '기본 순서'에서 완료된 질문을 확인할 수 있습니다.)"
+          : "등록된 질문이 없습니다.";
+
         questionList.innerHTML = `
-          <div class="text-center py-12 text-slate-400 text-sm bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-            등록된 질문이 없습니다.
+          <div class="text-center py-12 px-4 text-slate-400 text-sm bg-slate-50 rounded-2xl border border-dashed border-slate-200 leading-relaxed">
+            ${escapeHtml(emptyMessage)}
           </div>
         `;
         return;
       }
 
       questionList.innerHTML = "";
-      groupedList.forEach(g => {
+      visibleList.forEach(g => {
         const breakdownText = formatBreakdown(g.classBreakdown);
         const badgeStyle = g.count >= 3
           ? "bg-rose-100 text-rose-700"
           : "bg-indigo-100 text-indigo-700";
 
+        const isSolved = g.solved === true;
+        const pageTextClass = isSolved
+          ? "text-base font-bold text-slate-400 line-through"
+          : "text-base font-bold text-slate-800";
+        const probTextClass = isSolved
+          ? "text-base font-bold text-slate-400 line-through truncate"
+          : "text-base font-bold text-indigo-700 truncate";
+        const solveBtnClass = isSolved
+          ? "solve-group-btn text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl shadow-sm transition disabled:opacity-50"
+          : "solve-group-btn text-xs font-semibold text-slate-600 hover:text-emerald-700 px-3 py-2 rounded-xl hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition disabled:opacity-50";
+
         const card = document.createElement("div");
-        card.className = "flex items-center justify-between gap-3 p-4 bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 transition shadow-sm";
+        card.className = `flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border transition shadow-sm ${
+          isSolved
+            ? "bg-slate-50/80 border-emerald-200"
+            : "bg-white border-slate-200 hover:border-indigo-300"
+        }`;
         card.innerHTML = `
           <div class="min-w-0">
             <div class="flex items-center gap-2">
-              <span class="text-base font-bold text-slate-800">p.${escapeHtml(g.page)}</span>
+              <span class="${pageTextClass}">p.${escapeHtml(g.page)}</span>
               <span class="text-slate-300">|</span>
-              <span class="text-base font-bold text-indigo-700 truncate">${escapeHtml(g.problemNum)}번</span>
+              <span class="${probTextClass}">${escapeHtml(g.problemNum)}번</span>
             </div>
             <div class="text-xs text-slate-500 mt-1 truncate">${escapeHtml(breakdownText)}</div>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <span class="px-3 py-1 rounded-full text-xs font-extrabold ${badgeStyle}">
+          <div class="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+            <span class="px-3.5 py-1.5 rounded-full text-base sm:text-lg font-extrabold ${badgeStyle}">
               질문 ${g.count}회
             </span>
-            <button type="button" class="delete-group-btn text-xs font-semibold text-slate-500 hover:text-rose-600 px-2.5 py-1.5 rounded-xl hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition" title="풀이 완료(삭제)">
-              완료
-            </button>
+            <div class="flex items-center gap-1.5">
+              <button type="button" class="${solveBtnClass}" title="풀이 완료 상태 전환">
+                풀이 완료
+              </button>
+              <button type="button" class="delete-group-btn text-xs font-semibold text-rose-600 hover:text-white hover:bg-rose-600 px-3 py-2 rounded-xl border border-rose-200 hover:border-rose-600 transition" title="질문 삭제 (비밀번호 필요)">
+                질문 삭제
+              </button>
+            </div>
           </div>
         `;
 
-        // 개별 문제 완료(삭제) 시 비밀번호 재입력 모달 호출
+        // 풀이 완료 버튼 클릭: Firestore solved 필드 일괄 토글
+        const solveBtn = card.querySelector(".solve-group-btn");
+        solveBtn.addEventListener("click", async () => {
+          const nextSolved = !isSolved;
+          solveBtn.disabled = true;
+          try {
+            await updateSolvedInBatches(g.docIds, nextSolved);
+            showToast(
+              nextSolved
+                ? `p.${g.page} ${g.problemNum}번을 풀이 완료로 표시했습니다.`
+                : `p.${g.page} ${g.problemNum}번의 풀이 완료 표시를 해제했습니다.`
+            );
+          } catch (err) {
+            console.error("풀이 완료 상태 변경 오류:", err);
+            showToast("상태 변경 중 오류가 발생했습니다.");
+            solveBtn.disabled = false;
+          }
+        });
+
+        // 질문 삭제 버튼 클릭: 비밀번호 재입력 모달 호출
         card.querySelector(".delete-group-btn").addEventListener("click", () => {
           openDeleteAuthModal({
-            title: "풀이 완료(삭제) 확인",
-            message: `p.${g.page} ${g.problemNum}번 질문(총 ${g.count}건)을 목록에서 삭제합니다.`,
-            okText: "완료(삭제)",
+            title: "질문 삭제 확인",
+            message: `p.${g.page} ${g.problemNum}번 질문(총 ${g.count}건)을 목록에서 완전히 삭제합니다.`,
+            okText: "질문 삭제",
             onConfirm: async () => {
               await deleteDocIdsInBatches(g.docIds);
-              showToast(`p.${g.page} ${g.problemNum}번 질문이 풀이 완료 처리되었습니다.`);
+              showToast(`p.${g.page} ${g.problemNum}번 질문이 삭제되었습니다.`);
             }
           });
         });
@@ -932,7 +1051,7 @@
     });
 
     // =========================================================================
-    // 선생님별 전체 질문 엑셀 다운로드 (SheetJS)
+    // 선생님별 전체 질문 엑셀 다운로드 (SheetJS 0.20.3)
     // =========================================================================
     function downloadTeacherExcel() {
       const teacher = getSelectedTeacher();
@@ -952,20 +1071,26 @@
       const yyyymmdd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
       const fileName = `미적분1_부교재질문_${teacher.name}_${yyyymmdd}.xlsx`;
 
-      // 시트 1: 질문집계
-      const grouped = aggregateQuestions(teacherItems, sortSelect.value);
+      // 시트 1: 질문집계 (페이지, 문항번호, 질문횟수, 반별분포, 풀이완료)
+      const grouped = aggregateQuestions(
+        teacherItems,
+        sortSelect.value,
+        solvedFilterMode === "bottom" ? "bottom" : "default"
+      );
       const summaryRows = grouped.map(g => ({
         "페이지": g.page,
-        "문제번호": g.problemNum,
-        "총 질문횟수": g.count,
-        "반별 분포": formatBreakdown(g.classBreakdown)
+        "문항번호": g.problemNum,
+        "질문횟수": g.count,
+        "반별분포": formatBreakdown(g.classBreakdown),
+        "풀이완료": g.solved ? "완료" : "미완료"
       }));
 
-      // 시트 2: 원본내역
+      // 시트 2: 원본내역 (반, 페이지, 문항번호, 풀이완료, 등록일시)
       const rawRows = teacherItems.map(item => ({
         "반": `${item.classNum}반`,
         "페이지": Number(item.page),
-        "문제번호": Number(item.problemNum),
+        "문항번호": Number(item.problemNum),
+        "풀이완료": item.solved === true ? "완료" : "미완료",
         "등록일시": formatTimestamp(item.createdAt)
       }));
 
@@ -973,11 +1098,11 @@
         const wb = window.XLSX.utils.book_new();
 
         const wsSummary = window.XLSX.utils.json_to_sheet(summaryRows);
-        wsSummary["!cols"] = [{ wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 30 }];
+        wsSummary["!cols"] = [{ wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 28 }, { wch: 12 }];
         window.XLSX.utils.book_append_sheet(wb, wsSummary, "질문집계");
 
         const wsRaw = window.XLSX.utils.json_to_sheet(rawRows);
-        wsRaw["!cols"] = [{ wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 22 }];
+        wsRaw["!cols"] = [{ wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 22 }];
         window.XLSX.utils.book_append_sheet(wb, wsRaw, "원본내역");
 
         window.XLSX.writeFile(wb, fileName);
@@ -1000,6 +1125,7 @@
       if (sessionStorage.getItem("teacherAuth") === "true") {
         renderTeacherTabs();
         renderSubClassFilter();
+        renderSolvedFilterButtons();
         updateExcelButtonUI();
         showView("teacher");
       } else {
