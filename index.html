@@ -11,6 +11,10 @@
     src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"
     onerror="const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';document.head.appendChild(s);"
   ></script>
+  <!-- PDF.js CDN (수업용 문제지 자동 크롭 뷰어) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- Tesseract.js CDN (스캔 PDF 문제 번호 자동 인식 OCR) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- Pretendard 웹폰트 -->
   <link
     rel="stylesheet"
@@ -87,7 +91,7 @@
         </div>
 
         <!-- 자연수 검증 오류 인라인 경고 박스 -->
-        <div id="studentErrorBox" role="alert" class="hidden mb-3.5 p-4 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 text-base font-semibold flex items-start gap-2.5">
+        <div id="studentErrorBox" role="alert" class="hidden mb-3.5 p-4 rounded-xl bg-rose-50 border-2 border-rose-300 text-rose-700 text-base font-semibold flex items-start gap-2.5">
           <span class="shrink-0">⚠️</span>
           <span id="studentErrorText">페이지와 문제번호를 다시 확인해 주세요. (1 이상의 자연수만 입력 가능합니다.)</span>
         </div>
@@ -156,6 +160,21 @@
         </div>
       </div>
 
+      <!-- 수업용 올림포스 PDF 연결 바 -->
+      <div class="bg-sky-50 border border-sky-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="text-2xl shrink-0">📚</span>
+          <div class="min-w-0">
+            <div class="text-base font-bold text-sky-950">수업용 올림포스 문제지 연결</div>
+            <div id="pdfStatusText" class="text-sm text-sky-700 truncate">PDF를 선택하면 질문을 눌렀을 때 해당 문제만 바로 뜹니다.</div>
+          </div>
+        </div>
+        <label class="shrink-0 cursor-pointer px-4 py-2.5 bg-sky-600 hover:bg-sky-700 active:scale-[0.98] text-white text-sm sm:text-base font-bold rounded-xl shadow-sm transition">
+          문제지 PDF 선택
+          <input id="pdfFileInput" type="file" accept="application/pdf" class="hidden" />
+        </label>
+      </div>
+
       <!-- Firestore 권한 오류 안내 배너 -->
       <div id="firestoreErrorBanner" class="hidden bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-4 text-base leading-relaxed">
         <p class="font-bold text-rose-900 mb-1">⚠️ Firestore 데이터베이스 접근 권한 오류</p>
@@ -172,16 +191,17 @@
         </div>
       </div>
 
-      <!-- 반별 질문 마감 시간 설정 패널 (접기/펼치기 지원) -->
+      <!-- 반별 질문 마감 시간 설정 패널 (기본 접힘 + 상태 요약 배지 표시) -->
       <div class="bg-indigo-50/60 border border-indigo-200 rounded-2xl overflow-hidden">
-        <button id="toggleDeadlinePanelBtn" type="button" aria-expanded="true" class="w-full px-4 py-3.5 flex items-center justify-between gap-2 text-left hover:bg-indigo-100/60 transition">
-          <div class="flex items-center gap-2 min-w-0">
+        <button id="toggleDeadlinePanelBtn" type="button" aria-expanded="false" class="w-full px-4 py-3.5 flex flex-wrap items-center justify-between gap-2 text-left hover:bg-indigo-100/60 transition">
+          <div class="flex flex-wrap items-center gap-2 min-w-0">
             <span class="text-lg shrink-0">⏰</span>
             <span id="deadlinePanelTitle" class="text-base sm:text-lg font-bold text-indigo-950 truncate">반별 질문 마감 시간 설정</span>
+            <div id="deadlineSummaryBadges" class="flex flex-wrap items-center gap-1.5"></div>
           </div>
-          <span id="deadlinePanelChevron" class="text-sm sm:text-base font-bold text-indigo-700 shrink-0">접기 ▲</span>
+          <span id="deadlinePanelChevron" class="text-sm sm:text-base font-bold text-indigo-700 shrink-0 ml-auto">펼치기 ▼</span>
         </button>
-        <div id="deadlinePanelBody" class="px-4 pb-4 pt-2.5 space-y-3 border-t border-indigo-200/70">
+        <div id="deadlinePanelBody" class="hidden px-4 pb-4 pt-2.5 space-y-3 border-t border-indigo-200/70">
           <p class="text-sm sm:text-base text-indigo-900/80">
             담당 반별로 마감 날짜와 시간을 저장하면 학생 화면에 즉시 반영되며, 언제든 수정하거나 해제할 수 있습니다.
           </p>
@@ -227,6 +247,82 @@
       </div>
     </section>
   </main>
+
+  <!-- 수업용 전자칠판 풀스크린 문제 보기 모달 -->
+  <div id="problemViewModal" class="hidden fixed inset-0 z-50 bg-white flex flex-col w-screen h-screen overflow-hidden">
+    <!-- 슬림 상단 툴바 -->
+    <div class="px-3 py-2 sm:px-5 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2 shrink-0">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <h3 id="pvTitle" class="text-lg sm:text-xl font-extrabold text-sky-300 shrink-0">p.42 | 15번</h3>
+        <span id="pvCropBadge" class="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-700 text-slate-200 truncate max-w-[240px]">준비 중</span>
+        <span id="pvSubtitle" class="hidden md:inline text-xs text-slate-400 truncate max-w-[260px]">질문 정보</span>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <button type="button" id="boardGridBtn" class="px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs sm:text-sm font-bold transition" title="모눈 배경 전환">⊞ 모눈</button>
+        <button id="pvSolveBtn" type="button" class="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-bold transition">
+          ✓ 풀이 완료
+        </button>
+        <button id="pvCloseBtn" type="button" class="w-8 h-8 rounded-lg bg-slate-700 hover:bg-rose-600 text-white text-base font-bold transition">
+          ✕
+        </button>
+      </div>
+    </div>
+
+    <!-- 문제 영역 조절 서브 툴바 -->
+    <div class="px-3 py-1.5 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0 text-xs">
+      <div class="flex flex-wrap items-center gap-1" id="pvModeGroup">
+        <button type="button" data-mode="auto" class="pv-mode-btn px-2.5 py-1 rounded-md font-bold bg-indigo-600 text-white transition">🎯 해당 문제만</button>
+        <button type="button" data-mode="full" class="pv-mode-btn px-2.5 py-1 rounded-md font-semibold bg-white text-slate-700 border border-slate-300 transition">📄 전체 쪽</button>
+        <button type="button" id="pvCustomCropBtn" class="px-2.5 py-1 rounded-md font-bold bg-amber-500 hover:bg-amber-600 text-white transition">✂️ 직접 자르기</button>
+        <button type="button" id="pvResetCropBtn" class="hidden px-2 py-1 rounded-md font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 transition">↺ 해제</button>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1.5 ml-auto">
+        <span id="pvZoomBadge" class="px-2 py-0.5 rounded bg-white border border-slate-300 font-bold text-slate-600" title="두 손가락 핀치줌으로 크기 조절">🔍 100%</span>
+        <div class="flex items-center gap-1 bg-white border border-slate-300 rounded-md px-1.5 py-0.5">
+          <button id="pvPrevPageBtn" type="button" class="px-1 font-bold text-slate-600 hover:text-indigo-600">◀</button>
+          <span id="pvPageText" class="font-bold text-slate-700 min-w-[58px] text-center">PDF 1쪽</span>
+          <button id="pvNextPageBtn" type="button" class="px-1 font-bold text-slate-600 hover:text-indigo-600">▶</button>
+        </div>
+        <div class="flex items-center gap-1 bg-white border border-slate-300 rounded-md px-1.5 py-0.5">
+          <span class="text-slate-500 font-semibold">보정</span>
+          <button id="pvOffsetMinusBtn" type="button" class="px-1 font-bold text-slate-600 hover:text-indigo-600">-1</button>
+          <span id="pvOffsetText" class="font-bold text-indigo-700 min-w-[24px] text-center">+0</span>
+          <button id="pvOffsetPlusBtn" type="button" class="px-1 font-bold text-slate-600 hover:text-indigo-600">+1</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 전자칠판 풀스크린 작업 공간 (왼쪽 상단 문제 + 나머지 전체 풀이 공간) -->
+    <div id="smartboardStage" class="relative flex-1 w-full h-full bg-white overflow-hidden select-none">
+      <!-- 왼쪽 상단 고정 문제 영역 (핀치줌 기준점: top left) -->
+      <div id="pvProblemAnchor" style="transform-origin: top left;" class="absolute top-3 left-3 z-10 max-w-[78vw] max-h-[80vh] flex flex-col items-start touch-none">
+        <div id="pvEmptyBox" class="hidden text-center py-6 px-5 bg-slate-50 rounded-2xl border border-slate-300 shadow-md max-w-sm">
+          <p class="text-base font-bold text-slate-800">문제지 PDF를 연결해 주세요</p>
+          <p class="text-xs text-slate-500 mt-1">연결하면 왼쪽 상단에 문제만 뜨고 나머지 공간에 바로 풀이할 수 있습니다.</p>
+          <label class="inline-block mt-3 cursor-pointer px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-sm transition">
+            📚 올림포스 PDF 선택
+            <input id="modalPdfFileInput" type="file" accept="application/pdf" class="hidden" />
+          </label>
+        </div>
+
+        <div id="pvLoading" class="hidden px-4 py-3 rounded-xl bg-indigo-50 border border-indigo-200 text-sm font-bold text-indigo-700 shadow">
+          문제를 찾아 배치하는 중...
+        </div>
+
+        <div id="pvCropHint" class="hidden pointer-events-auto mb-2 px-3 py-1.5 rounded-lg bg-amber-100 border border-amber-400 text-amber-900 text-xs font-bold shadow">
+          ✂️ 손가락이나 펜으로 문제 영역을 네모로 드래그하세요!
+        </div>
+
+        <img id="pvProblemImg" alt="문제 이미지" class="hidden w-auto h-auto max-w-full max-h-[78vh] object-contain rounded-xl shadow-md bg-white border border-slate-300" />
+        <div id="pvCanvasWrap" class="relative inline-block max-w-full">
+          <canvas id="pvCanvas" class="hidden w-auto h-auto max-w-full max-h-[78vh] object-contain rounded-xl shadow-md bg-white border border-slate-300 touch-none"></canvas>
+          <div id="pvSelectionBox" class="hidden absolute border-2 border-amber-500 bg-amber-400/25 pointer-events-none rounded"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- 교사 삭제용 비밀번호 재입력 확인 모달 -->
   <div id="deleteModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -302,6 +398,13 @@
     const POSITIVE_INT_REGEX = /^[1-9]\d*$/;
     const BATCH_LIMIT = 450;
     const DEADLINE_REFRESH_MS = 10000;
+    const PDF_OFFSET_KEY = "olimpos_pdf_offset_v1";
+    const CUSTOM_CROPS_KEY = "olimpos_custom_crops_v1";
+
+    if (typeof window.pdfjsLib !== "undefined") {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
 
     // 담당 선생님 및 담당 반 정의
     const TEACHERS = [
@@ -322,19 +425,34 @@
     // =========================================================================
     let selectedClass = null;
     let selectedTeacherId = TEACHERS[0].id;
-    let selectedSubClass = "ALL"; // "ALL" 또는 담당 반 숫자
-    let solvedFilterMode = "bottom"; // "bottom" | "hide" | "all"
+    let selectedSubClass = "ALL";
+    let solvedFilterMode = "bottom";
     let allQuestions = [];
-    let deadlineDocData = {}; // deadline_settings 문서 원본 데이터
-    const dirtyDeadlineClasses = new Set(); // 교사가 수정 중인 미저장 반 번호 추적
+    let deadlineDocData = {};
+    const dirtyDeadlineClasses = new Set();
     let currentViewName = "home";
-    let isDeadlinePanelOpen = true;
+    let isDeadlinePanelOpen = false;
     let isSubmittingQuestions = false;
     let unsubscribeQuestions = null;
     let unsubscribeDeadlines = null;
     let deadlineCheckTimer = null;
     let pendingDeleteCallback = null;
     let toastTimer = null;
+
+    // PDF 문제 뷰어 상태
+    let pdfDoc = null;
+    let pdfPageOffset = Number(localStorage.getItem(PDF_OFFSET_KEY) || "0");
+    let customCrops = {};
+    try {
+      customCrops = JSON.parse(localStorage.getItem(CUSTOM_CROPS_KEY) || "{}");
+    } catch { customCrops = {}; }
+    let currentViewGroup = null;
+    let currentPdfPage = 1;
+    let currentViewMode = "auto"; // "auto" | "left" | "right" | "full"
+    let isCropSelectMode = false;
+    let currentViewport1 = { width: 1, height: 1 };
+    let currentCropArea = null; // 현재 캔버스에 그려진 PDF(scale=1) 영역 { x, y, w, h }
+    let ocrWorkerPromise = null;
 
     const mainContainer = document.getElementById("mainContainer");
     const views = {
@@ -371,6 +489,7 @@
     const teacherTabs = document.getElementById("teacherTabs");
     const toggleDeadlinePanelBtn = document.getElementById("toggleDeadlinePanelBtn");
     const deadlinePanelTitle = document.getElementById("deadlinePanelTitle");
+    const deadlineSummaryBadges = document.getElementById("deadlineSummaryBadges");
     const deadlinePanelChevron = document.getElementById("deadlinePanelChevron");
     const deadlinePanelBody = document.getElementById("deadlinePanelBody");
     const deadlineSettingsList = document.getElementById("deadlineSettingsList");
@@ -380,6 +499,36 @@
     const filterStatusText = document.getElementById("filterStatusText");
     const summaryCount = document.getElementById("summaryCount");
     const questionList = document.getElementById("questionList");
+
+    // PDF 모달 DOM
+    const pdfFileInput = document.getElementById("pdfFileInput");
+    const modalPdfFileInput = document.getElementById("modalPdfFileInput");
+    const pdfStatusText = document.getElementById("pdfStatusText");
+    const problemViewModal = document.getElementById("problemViewModal");
+    const pvTitle = document.getElementById("pvTitle");
+    const pvCropBadge = document.getElementById("pvCropBadge");
+    const pvSubtitle = document.getElementById("pvSubtitle");
+    const pvSolveBtn = document.getElementById("pvSolveBtn");
+    const pvCloseBtn = document.getElementById("pvCloseBtn");
+    const pvModeBtns = document.querySelectorAll(".pv-mode-btn");
+    const pvPrevPageBtn = document.getElementById("pvPrevPageBtn");
+    const pvNextPageBtn = document.getElementById("pvNextPageBtn");
+    const pvPageText = document.getElementById("pvPageText");
+    const pvOffsetMinusBtn = document.getElementById("pvOffsetMinusBtn");
+    const pvOffsetPlusBtn = document.getElementById("pvOffsetPlusBtn");
+    const pvOffsetText = document.getElementById("pvOffsetText");
+    const pvEmptyBox = document.getElementById("pvEmptyBox");
+    const pvLoading = document.getElementById("pvLoading");
+    const pvProblemImg = document.getElementById("pvProblemImg");
+    const pvCanvas = document.getElementById("pvCanvas");
+    const pvCustomCropBtn = document.getElementById("pvCustomCropBtn");
+    const pvResetCropBtn = document.getElementById("pvResetCropBtn");
+    const pvCropHint = document.getElementById("pvCropHint");
+    const pvSelectionBox = document.getElementById("pvSelectionBox");
+    const smartboardStage = document.getElementById("smartboardStage");
+    const pvProblemAnchor = document.getElementById("pvProblemAnchor");
+    const pvZoomBadge = document.getElementById("pvZoomBadge");
+    const boardGridBtn = document.getElementById("boardGridBtn");
 
     const deleteModal = document.getElementById("deleteModal");
     const deleteModalTitle = document.getElementById("deleteModalTitle");
@@ -419,12 +568,10 @@
       return TEACHERS.find(t => t.id === selectedTeacherId) || TEACHERS[0];
     }
 
-    // 마감 설정 문서 여부 확인 (질문 집계/엑셀/삭제에서 절대 제외)
     function isSettingsDoc(docId) {
       return docId === DEADLINE_DOC_ID;
     }
 
-    // Safari/iOS UTC 오파싱을 방지하기 위한 로컬 타임존 수동 파서 (YYYY-MM-DDTHH:mm)
     function parseLocalDateTime(str) {
       if (!str || typeof str !== "string") return null;
       const trimmed = str.trim();
@@ -458,7 +605,6 @@
       return date;
     }
 
-    // 반별 마감 정보 조회 (class_{c} 우선, 이전 deadlines.{c} 포맷도 호환 읽기)
     function getClassDeadlineInfo(classNum) {
       const key = `class_${classNum}`;
       let entry;
@@ -505,7 +651,7 @@
     }
 
     function getTimestampMillis(ts) {
-      if (!ts) return Date.now(); // serverTimestamp 반영 직전 pending 문서를 최신순으로 유지
+      if (!ts) return Date.now();
       if (typeof ts.toMillis === "function") return ts.toMillis();
       if (typeof ts.seconds === "number") return ts.seconds * 1000;
       return 0;
@@ -542,7 +688,6 @@
       }
     }
 
-    // 450건 단위 배치 일괄 수정 (풀이 완료 토글)
     async function updateSolvedInBatches(docIds, solvedValue) {
       const safeIds = docIds.filter(id => id && !isSettingsDoc(id));
       for (let i = 0; i < safeIds.length; i += BATCH_LIMIT) {
@@ -555,7 +700,6 @@
       }
     }
 
-    // 450건 단위 배치 일괄 삭제 (deadline_settings 절대 제외)
     async function deleteDocIdsInBatches(docIds) {
       const safeIds = docIds.filter(id => id && !isSettingsDoc(id));
       for (let i = 0; i < safeIds.length; i += BATCH_LIMIT) {
@@ -578,10 +722,8 @@
 
       btnHome.classList.toggle("hidden", viewName === "home");
 
-      if (viewName === "home") {
+      if (viewName === "home" || viewName === "login") {
         mainContainer.style.marginTop = "18vh";
-      } else if (viewName === "login") {
-        mainContainer.style.marginTop = "30vh";
       } else {
         mainContainer.style.marginTop = "0px";
         window.scrollTo({ top: 0, behavior: "auto" });
@@ -634,7 +776,6 @@
       }
     }
 
-    // 1~9반 선택 버튼 렌더링 (실시간 마감 상태 반영)
     function renderClassButtons() {
       if (selectedClass && isClassClosed(selectedClass)) {
         const expiredClass = selectedClass;
@@ -700,7 +841,6 @@
       }
     }
 
-    // 질문 입력 칸 추가 (반드시 type="text" inputmode="numeric" 사용)
     function addQuestionRow() {
       const row = document.createElement("div");
       row.className = "flex items-center gap-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200";
@@ -759,7 +899,6 @@
       addQuestionRow();
     }
 
-    // 학생 질문 제출 처리
     submitQuestionsBtn.addEventListener("click", async () => {
       if (isSubmittingQuestions) return;
       hideStudentError();
@@ -770,7 +909,6 @@
         return;
       }
 
-      // 제출 직전 마감 여부 최종 확인
       if (isClassClosed(selectedClass)) {
         const expiredClass = selectedClass;
         selectedClass = null;
@@ -794,7 +932,6 @@
         setInputInvalid(pageInput, false);
         setInputInvalid(probInput, false);
 
-        // 양쪽 모두 비어 있는 행은 무시
         if (!pageRaw && !probRaw) continue;
 
         const pageValid = isPositiveInteger(pageRaw);
@@ -954,8 +1091,20 @@
       };
     }
 
-    // 실시간 스냅샷 또는 10초 타이머 갱신 시, 포커스 중이거나 미저장 편집 중인 input은 절대 덮어쓰지 않고 배지만 갱신
+    function renderDeadlineSummaryBadges() {
+      const teacher = getSelectedTeacher();
+      deadlineSummaryBadges.innerHTML = "";
+      teacher.classes.forEach(cls => {
+        const meta = getDeadlineStatusMeta(cls);
+        const span = document.createElement("span");
+        span.className = meta.className.replace("text-sm", "text-xs").replace("px-3 py-1", "px-2.5 py-0.5");
+        span.textContent = `${cls}반: ${meta.text}`;
+        deadlineSummaryBadges.appendChild(span);
+      });
+    }
+
     function syncTeacherDeadlinePanelFromSnapshot() {
+      renderDeadlineSummaryBadges();
       const teacher = getSelectedTeacher();
       teacher.classes.forEach(cls => {
         const badge = deadlineSettingsList.querySelector(`[data-deadline-badge-class="${cls}"]`);
@@ -978,6 +1127,7 @@
     }
 
     function updateTeacherDeadlineBadgesOnly() {
+      renderDeadlineSummaryBadges();
       const badges = deadlineSettingsList.querySelectorAll("[data-deadline-badge-class]");
       badges.forEach(badge => {
         const cls = Number(badge.dataset.deadlineBadgeClass);
@@ -987,10 +1137,10 @@
       });
     }
 
-    // 담당 반별 질문 마감 시간 설정 패널 렌더링
     function renderDeadlineSettingsPanel() {
       const teacher = getSelectedTeacher();
-      deadlinePanelTitle.textContent = `반별 질문 마감 시간 설정 (${teacher.classes.join(", ")}반)`;
+      deadlinePanelTitle.textContent = `반별 질문 마감 시간 설정`;
+      renderDeadlineSummaryBadges();
       deadlineSettingsList.innerHTML = "";
 
       teacher.classes.forEach(cls => {
@@ -1028,12 +1178,8 @@
         const saveBtn = row.querySelector(".save-deadline-btn");
         const clearBtn = row.querySelector(".clear-deadline-btn");
 
-        inputEl.addEventListener("input", () => {
-          dirtyDeadlineClasses.add(cls);
-        });
-        inputEl.addEventListener("change", () => {
-          dirtyDeadlineClasses.add(cls);
-        });
+        inputEl.addEventListener("input", () => dirtyDeadlineClasses.add(cls));
+        inputEl.addEventListener("change", () => dirtyDeadlineClasses.add(cls));
 
         saveBtn.addEventListener("click", async () => {
           const val = inputEl.value.trim();
@@ -1079,7 +1225,6 @@
       });
     }
 
-    // Firestore deadline_settings 문서에 class_{c} 키로 병합 저장 (해제 시 null 저장)
     async function saveClassDeadline(classNum, deadlinePayload) {
       await setDoc(
         doc(db, COLLECTION_NAME, DEADLINE_DOC_ID),
@@ -1090,7 +1235,6 @@
       );
     }
 
-    // 마감 설정 실시간 구독 (학생/교사 화면 모두 실시간 반영)
     function startDeadlineListener() {
       if (unsubscribeDeadlines) return;
       unsubscribeDeadlines = onSnapshot(
@@ -1114,7 +1258,6 @@
       );
     }
 
-    // 10초 주기 자동 갱신 타이머
     function startDeadlineClock() {
       if (deadlineCheckTimer) return;
       deadlineCheckTimer = setInterval(() => {
@@ -1171,7 +1314,6 @@
       });
     }
 
-    // Firestore 실시간 구독 (orderBy 미사용 -> 클라이언트 정렬로 색인 불필요 및 pending 문서 보호)
     function startRealtimeListener() {
       if (unsubscribeQuestions) return;
       firestoreErrorBanner.classList.add("hidden");
@@ -1226,7 +1368,6 @@
       });
     }
 
-    // 동일 질문(페이지 + 문제번호) 집계
     function aggregateQuestions(items) {
       const groupedMap = new Map();
 
@@ -1255,7 +1396,6 @@
         group.count += 1;
         group.docIds.push(item.id);
         group.classBreakdown[classNum] = (group.classBreakdown[classNum] || 0) + 1;
-        // 그룹 내 모든 문서가 solved === true 일 때만 완료 처리
         if (item.solved !== true) {
           group.isSolved = false;
         }
@@ -1279,13 +1419,11 @@
       summaryCount.textContent = `미완료 ${unsolvedCount}종 · 완료 ${solvedCount}종 (총 ${filtered.length}건)`;
       clearFilteredBtn.disabled = filtered.length === 0;
 
-      // 풀이 완료 필터 적용
       let displayList = allGrouped.slice();
       if (solvedFilterMode === "hide") {
         displayList = displayList.filter(g => !g.isSolved);
       }
 
-      // 정렬 적용
       const sortBy = sortSelect.value;
       displayList.sort((a, b) => {
         if (solvedFilterMode === "bottom" && a.isSolved !== b.isSolved) {
@@ -1323,12 +1461,8 @@
           ? "flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 sm:p-5 bg-emerald-50/40 border border-emerald-200 rounded-2xl transition shadow-sm"
           : "flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 sm:p-5 bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 transition shadow-sm";
 
-        const titleStyle = isSolved
-          ? "line-through text-slate-400"
-          : "text-slate-800";
-        const probStyle = isSolved
-          ? "line-through text-slate-400"
-          : "text-indigo-700";
+        const titleStyle = isSolved ? "line-through text-slate-400" : "text-slate-800";
+        const probStyle = isSolved ? "line-through text-slate-400" : "text-indigo-700";
         const countBadgeStyle = isSolved
           ? "bg-slate-200 text-slate-500"
           : (g.count >= 3 ? "bg-rose-100 text-rose-700" : "bg-indigo-100 text-indigo-700");
@@ -1337,7 +1471,7 @@
           : "bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border-slate-300 hover:border-emerald-400";
 
         card.innerHTML = `
-          <div class="min-w-0">
+          <div class="min-w-0 cursor-pointer open-problem-area" title="클릭하여 문제 보기">
             <div class="flex flex-wrap items-center gap-2.5">
               <span class="text-xl sm:text-2xl font-bold ${titleStyle}">p.${g.page}</span>
               <span class="text-slate-300 text-lg">|</span>
@@ -1349,17 +1483,23 @@
             <div class="text-base text-slate-500 mt-1.5 font-medium">${escapeHtml(breakdownText)}</div>
           </div>
 
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button type="button" class="view-problem-btn flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-base font-bold shadow-sm transition">
+              📖 문제 보기
+            </button>
             <button type="button" class="toggle-solved-btn flex-1 sm:flex-none px-4 py-2.5 rounded-xl border text-base font-bold transition disabled:opacity-50 ${solvedBtnStyle}">
               ${isSolved ? "✓ 풀이 완료" : "풀이 완료"}
             </button>
             <button type="button" class="delete-group-btn flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-600 text-rose-600 hover:text-white text-base font-bold transition">
-              질문 삭제
+              삭제
             </button>
           </div>
         `;
 
-        // 풀이 완료 토글 (중복 클릭 방지 + 450건 배치 처리)
+        const openAction = () => openProblemViewer(g, breakdownText);
+        card.querySelector(".open-problem-area").addEventListener("click", openAction);
+        card.querySelector(".view-problem-btn").addEventListener("click", openAction);
+
         const toggleBtn = card.querySelector(".toggle-solved-btn");
         toggleBtn.addEventListener("click", async () => {
           toggleBtn.disabled = true;
@@ -1379,7 +1519,6 @@
           }
         });
 
-        // 질문 삭제 (비밀번호 18128 재입력 모달)
         card.querySelector(".delete-group-btn").addEventListener("click", () => {
           openDeleteModal({
             title: "질문 삭제 확인",
@@ -1395,7 +1534,6 @@
       });
     }
 
-    // 목록 일괄 비우기 버튼 (deadline_settings 절대 제외)
     clearFilteredBtn.addEventListener("click", () => {
       const teacher = getSelectedTeacher();
       const filtered = getFilteredQuestions();
@@ -1419,7 +1557,587 @@
     });
 
     // =========================================================================
-    // 8. 비밀번호 재입력 삭제 확인 모달
+    // 8. 단일 문제 자동 크롭 뷰어 (PDF.js + 문제 이미지 우선 지원)
+    // =========================================================================
+    async function loadPdfFile(file) {
+      if (!file) return;
+      if (typeof window.pdfjsLib === "undefined") {
+        showToast("PDF 뷰어 라이브러리를 불러오지 못했습니다. 네트워크를 확인해 주세요.");
+        return;
+      }
+      pdfStatusText.textContent = "PDF를 불러오는 중...";
+      try {
+        const buffer = await file.arrayBuffer();
+        pdfDoc = await window.pdfjsLib.getDocument({ data: buffer }).promise;
+        pdfStatusText.textContent = `연결됨: ${file.name} (총 ${pdfDoc.numPages}쪽)`;
+        showToast(`문제지 PDF가 연결되었습니다. (총 ${pdfDoc.numPages}쪽)`);
+        if (!problemViewModal.classList.contains("hidden") && currentViewGroup) {
+          currentPdfPage = clampPdfPage(currentViewGroup.page + pdfPageOffset);
+          await renderProblemView();
+        }
+      } catch (err) {
+        console.error("PDF 로드 오류:", err);
+        pdfStatusText.textContent = "PDF 불러오기 실패. 다시 선택해 주세요.";
+        showToast("PDF 파일을 읽는 중 오류가 발생했습니다.");
+      }
+    }
+
+    async function tryAutoLoadHostedPdf() {
+      if (!window.location.protocol.startsWith("http")) return;
+      if (typeof window.pdfjsLib === "undefined") return;
+      try {
+        const res = await fetch("./workbook.pdf", { method: "HEAD" });
+        if (!res.ok) return;
+        pdfStatusText.textContent = "올림포스 PDF 자동 연결 중...";
+        pdfDoc = await window.pdfjsLib.getDocument("./workbook.pdf").promise;
+        pdfStatusText.textContent = `자동 연결됨: 올림포스 미적분Ⅰ (총 ${pdfDoc.numPages}쪽)`;
+      } catch {
+        // 수동 선택 대기
+      }
+    }
+
+    function clampPdfPage(p) {
+      if (!pdfDoc) return 1;
+      return Math.max(1, Math.min(pdfDoc.numPages, p));
+    }
+
+    function updateModeButtonsUI() {
+      pvModeBtns.forEach(btn => {
+        const active = btn.dataset.mode === currentViewMode;
+        btn.className = active
+          ? "pv-mode-btn px-3 py-1.5 rounded-lg text-sm font-bold bg-indigo-600 text-white transition"
+          : "pv-mode-btn px-3 py-1.5 rounded-lg text-sm font-semibold bg-white text-slate-700 border border-slate-300 transition";
+      });
+    }
+
+    async function openProblemViewer(group, breakdownText) {
+      currentViewGroup = group;
+      currentViewMode = "auto";
+      updateModeButtonsUI();
+
+      pvTitle.textContent = `p.${group.page} | ${group.problemNum}번`;
+      pvSubtitle.textContent = `질문 ${group.count}회 · ${breakdownText}`;
+      pvOffsetText.textContent = pdfPageOffset >= 0 ? `+${pdfPageOffset}` : `${pdfPageOffset}`;
+      pvSolveBtn.textContent = group.isSolved ? "✓ 완료됨" : "✓ 풀이 완료";
+
+      problemViewModal.classList.remove("hidden");
+      setProblemZoom(1);
+      currentPdfPage = clampPdfPage(group.page + pdfPageOffset);
+      await renderProblemView();
+    }
+
+    function closeProblemViewer() {
+      problemViewModal.classList.add("hidden");
+    }
+
+    // 1) 미리 잘라둔 문제 이미지(./problems/p42_15.jpg 또는 .png)가 있으면 최우선으로 즉시 표시
+    function tryLoadStaticProblemImage(page, probNum) {
+      const candidates = [
+        `./problems/p${page}_${probNum}.jpg`,
+        `./problems/p${page}_${probNum}.png`
+      ];
+      return new Promise((resolve) => {
+        let idx = 0;
+        const tryNext = () => {
+          if (idx >= candidates.length) {
+            resolve(null);
+            return;
+          }
+          const url = candidates[idx++];
+          const img = new Image();
+          img.onload = () => resolve(url);
+          img.onerror = () => tryNext();
+          img.src = url;
+        };
+        tryNext();
+      });
+    }
+
+    // 2) PDF 텍스트 좌표를 이용해 2단 편집 페이지에서 해당 문제 영역만 자동 계산
+    async function findProblemCropBox(page, targetNum, viewportScale1) {
+      try {
+        const textContent = await page.getTextContent();
+        const W = viewportScale1.width;
+        const H = viewportScale1.height;
+
+        const items = textContent.items
+          .map(it => {
+            const str = (it.str || "").trim();
+            if (!str) return null;
+            const tr = window.pdfjsLib.Util.transform(viewportScale1.transform, it.transform);
+            return { str, x: tr[4], y: tr[5] };
+          })
+          .filter(Boolean);
+
+        if (items.length === 0) return { noText: true };
+
+        // 문제 번호 패턴 매칭 (예: "15", "015", "15.", "[15]", "15번")
+        const targetRegex = new RegExp(`^\\[?0*${targetNum}\\]?(?:\\.|번)?$`);
+        const startRegex = new RegExp(`^\\[?0*${targetNum}\\]?(?:\\.|번|\\s|$)`);
+
+        const isLeftMargin = (x) => x >= W * 0.01 && x <= W * 0.24;
+        const isRightMargin = (x) => x >= W * 0.43 && x <= W * 0.68;
+        const isInBodyY = (y) => y >= H * 0.04 && y <= H * 0.95;
+
+        let candidates = items.filter(it =>
+          isInBodyY(it.y) &&
+          (isLeftMargin(it.x) || isRightMargin(it.x)) &&
+          targetRegex.test(it.str)
+        );
+
+        if (candidates.length === 0) {
+          candidates = items.filter(it =>
+            isInBodyY(it.y) &&
+            (isLeftMargin(it.x) || isRightMargin(it.x)) &&
+            startRegex.test(it.str)
+          );
+        }
+
+        if (candidates.length === 0) return null;
+
+        const hit = candidates[0];
+        const col = hit.x < W * 0.48 ? "left" : "right";
+
+        const nextProblemCandidates = items.filter(it => {
+          if (it.y <= hit.y + 24 || it.y > H * 0.95) return false;
+          const inSameColMargin = col === "left" ? isLeftMargin(it.x) : isRightMargin(it.x);
+          if (!inSameColMargin) return false;
+          const m = it.str.match(/^\[?0*(\d{1,3})\]?(?:\.|번)?$/);
+          if (!m) return false;
+          const n = Number(m[1]);
+          return n > targetNum && n <= targetNum + 10;
+        }).sort((a, b) => a.y - b.y);
+
+        const cropX = col === "left" ? W * 0.015 : W * 0.485;
+        const cropW = W * 0.50;
+        const cropY = Math.max(0, hit.y - 26);
+        const endY = nextProblemCandidates.length > 0
+          ? Math.max(cropY + 80, nextProblemCandidates[0].y - 18)
+          : H * 0.95;
+
+        return {
+          x: cropX,
+          y: cropY,
+          w: cropW,
+          h: endY - cropY,
+          col
+        };
+      } catch {
+        return null;
+      }
+    }
+
+    // 2-B) 스캔 PDF 전용: 좌/우 단의 문제 번호 여백만 초고속 OCR로 인식해 자동 크롭
+    async function getOcrWorker() {
+      if (typeof window.Tesseract === "undefined") return null;
+      if (!ocrWorkerPromise) {
+        ocrWorkerPromise = (async () => {
+          const worker = await window.Tesseract.createWorker("eng");
+          await worker.setParameters({ tessedit_char_whitelist: "0123456789" });
+          return worker;
+        })();
+      }
+      return ocrWorkerPromise;
+    }
+
+    async function findProblemCropByOcr(offCanvas, renderScale, targetNum, viewport1) {
+      try {
+        const worker = await getOcrWorker();
+        if (!worker) return null;
+
+        const W = offCanvas.width;
+        const H = offCanvas.height;
+        const sy = Math.floor(H * 0.05);
+        const sh = Math.floor(H * 0.90);
+        const stripW = Math.floor(W * 0.14);
+
+        const columns = [
+          { col: "left", sx: Math.floor(W * 0.02), cropX: viewport1.width * 0.015 },
+          { col: "right", sx: Math.floor(W * 0.48), cropX: viewport1.width * 0.485 }
+        ];
+
+        const stripCanvas = document.createElement("canvas");
+        stripCanvas.width = stripW;
+        stripCanvas.height = sh;
+        const stripCtx = stripCanvas.getContext("2d");
+
+        for (const c of columns) {
+          stripCtx.clearRect(0, 0, stripW, sh);
+          stripCtx.drawImage(offCanvas, c.sx, sy, stripW, sh, 0, 0, stripW, sh);
+
+          const { data } = await worker.recognize(stripCanvas);
+          const nums = (data.words || [])
+            .map(w => {
+              const txt = (w.text || "").trim();
+              const m = txt.match(/^0*(\d{1,3})$/);
+              if (!m) return null;
+              return {
+                num: Number(m[1]),
+                y: (sy + w.bbox.y0) / renderScale
+              };
+            })
+            .filter(Boolean)
+            .sort((a, b) => a.y - b.y);
+
+          const hit = nums.find(n => n.num === targetNum);
+          if (hit) {
+            const nextHit = nums.find(n => n.y > hit.y + 24 && n.num > targetNum && n.num <= targetNum + 10);
+            const cropY = Math.max(0, hit.y - 26);
+            const endY = nextHit ? Math.max(cropY + 80, nextHit.y - 18) : viewport1.height * 0.95;
+            return {
+              x: c.cropX,
+              y: cropY,
+              w: viewport1.width * 0.50,
+              h: endY - cropY,
+              col: c.col
+            };
+          }
+        }
+        return null;
+      } catch (err) {
+        console.warn("OCR 자동 크롭 실패:", err);
+        return null;
+      }
+    }
+
+    async function renderProblemView() {
+      if (!currentViewGroup) return;
+
+      isCropSelectMode = false;
+      pvCropHint.classList.add("hidden");
+      pvSelectionBox.classList.add("hidden");
+      pvEmptyBox.classList.add("hidden");
+      pvProblemImg.classList.add("hidden");
+      pvCanvas.classList.add("hidden");
+      pvLoading.classList.remove("hidden");
+
+      const cropKey = `${currentViewGroup.page}_${currentViewGroup.problemNum}`;
+      const savedCustomCrop = customCrops[cropKey];
+      pvResetCropBtn.classList.toggle("hidden", !savedCustomCrop);
+
+      if (currentViewMode === "auto") {
+        const staticUrl = await tryLoadStaticProblemImage(currentViewGroup.page, currentViewGroup.problemNum);
+        if (staticUrl) {
+          pvLoading.classList.add("hidden");
+          pvProblemImg.src = staticUrl;
+          pvProblemImg.classList.remove("hidden");
+          pvCropBadge.textContent = `🎯 ${currentViewGroup.problemNum}번 이미지`;
+          pvPageText.textContent = `p.${currentViewGroup.page}`;
+          return;
+        }
+      }
+
+      if (!pdfDoc) {
+        pvLoading.classList.add("hidden");
+        pvEmptyBox.classList.remove("hidden");
+        pvCropBadge.textContent = "PDF 미연결";
+        pvPageText.textContent = "-";
+        return;
+      }
+
+      pvPageText.textContent = `PDF ${currentPdfPage}/${pdfDoc.numPages}`;
+
+      try {
+        const page = await pdfDoc.getPage(currentPdfPage);
+        const renderScale = 3.2;
+        const viewport1 = page.getViewport({ scale: 1 });
+        const viewportHi = page.getViewport({ scale: renderScale });
+        currentViewport1 = viewport1;
+
+        const offCanvas = document.createElement("canvas");
+        offCanvas.width = viewportHi.width;
+        offCanvas.height = viewportHi.height;
+        const offCtx = offCanvas.getContext("2d");
+        await page.render({ canvasContext: offCtx, viewport: viewportHi }).promise;
+
+        let crop = null;
+        if (currentViewMode === "auto") {
+          if (savedCustomCrop) {
+            crop = savedCustomCrop;
+            pvCropBadge.textContent = `✂️ ${currentViewGroup.problemNum}번 저장된 영역`;
+          } else {
+            const autoRes = await findProblemCropBox(page, currentViewGroup.problemNum, viewport1);
+            if (autoRes && !autoRes.noText) {
+              crop = autoRes;
+              pvCropBadge.textContent = `🎯 ${currentViewGroup.problemNum}번만 자동 크롭`;
+            } else {
+              // 스캔 PDF이거나 텍스트 번호가 없으면 여백 OCR로 자동 탐지 시도
+              pvCropBadge.textContent = "🔍 스캔 PDF 번호 인식 중...";
+              const ocrCrop = await findProblemCropByOcr(offCanvas, renderScale, currentViewGroup.problemNum, viewport1);
+              if (ocrCrop) {
+                crop = ocrCrop;
+                customCrops[cropKey] = ocrCrop;
+                localStorage.setItem(CUSTOM_CROPS_KEY, JSON.stringify(customCrops));
+                pvResetCropBtn.classList.remove("hidden");
+                pvCropBadge.textContent = `🎯 ${currentViewGroup.problemNum}번 스캔 OCR 자동 크롭`;
+              } else {
+                pvCropBadge.textContent = autoRes && autoRes.noText
+                  ? "📄 스캔 PDF (번호 미탐지) · [✂️ 직접 자르기] 사용"
+                  : "📄 번호 미탐지 · [✂️ 직접 자르기] 또는 좌/우 단";
+              }
+            }
+          }
+        } else if (currentViewMode === "left") {
+          crop = { x: 0, y: viewport1.height * 0.04, w: viewport1.width * 0.51, h: viewport1.height * 0.92 };
+          pvCropBadge.textContent = "◀ 왼쪽 단 확대";
+        } else if (currentViewMode === "right") {
+          crop = { x: viewport1.width * 0.49, y: viewport1.height * 0.04, w: viewport1.width * 0.51, h: viewport1.height * 0.92 };
+          pvCropBadge.textContent = "▶ 오른쪽 단 확대";
+        } else {
+          pvCropBadge.textContent = "📄 전체 페이지";
+        }
+
+        currentCropArea = crop || { x: 0, y: 0, w: viewport1.width, h: viewport1.height };
+
+        const outCtx = pvCanvas.getContext("2d");
+        if (crop) {
+          const sx = Math.max(0, Math.floor(crop.x * renderScale));
+          const sy = Math.max(0, Math.floor(crop.y * renderScale));
+          const sw = Math.min(offCanvas.width - sx, Math.floor(crop.w * renderScale));
+          const sh = Math.min(offCanvas.height - sy, Math.floor(crop.h * renderScale));
+          pvCanvas.width = sw;
+          pvCanvas.height = sh;
+          outCtx.drawImage(offCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+        } else {
+          pvCanvas.width = offCanvas.width;
+          pvCanvas.height = offCanvas.height;
+          outCtx.drawImage(offCanvas, 0, 0);
+        }
+
+        pvCanvas.classList.remove("hidden");
+      } catch (err) {
+        console.error("문제 렌더링 오류:", err);
+        showToast("문제를 화면에 그리는 중 오류가 발생했습니다.");
+      } finally {
+        pvLoading.classList.add("hidden");
+      }
+    }
+
+    // ✂️ 손가락/마우스 드래그로 해당 문제 영역 직접 자르기 (1회 지정 시 자동 저장)
+    let dragStart = null;
+    pvCustomCropBtn.addEventListener("click", async () => {
+      if (!pdfDoc || !currentViewGroup) {
+        showToast("먼저 올림포스 PDF를 연결해 주세요.");
+        return;
+      }
+      if (currentViewMode !== "full") {
+        currentViewMode = "full";
+        updateModeButtonsUI();
+        await renderProblemView();
+      }
+      isCropSelectMode = true;
+      pvCropHint.classList.remove("hidden");
+      pvCanvas.style.cursor = "crosshair";
+    });
+
+    pvResetCropBtn.addEventListener("click", async () => {
+      if (!currentViewGroup) return;
+      const cropKey = `${currentViewGroup.page}_${currentViewGroup.problemNum}`;
+      delete customCrops[cropKey];
+      localStorage.setItem(CUSTOM_CROPS_KEY, JSON.stringify(customCrops));
+      currentViewMode = "auto";
+      updateModeButtonsUI();
+      showToast("저장된 문제 영역을 초기화했습니다.");
+      await renderProblemView();
+    });
+
+    pvCanvas.addEventListener("pointerdown", (e) => {
+      if (!isCropSelectMode) return;
+      pvCanvas.setPointerCapture(e.pointerId);
+      const rect = pvCanvas.getBoundingClientRect();
+      dragStart = {
+        x: Math.max(0, Math.min(rect.width, e.clientX - rect.left)),
+        y: Math.max(0, Math.min(rect.height, e.clientY - rect.top))
+      };
+      pvSelectionBox.style.left = `${dragStart.x}px`;
+      pvSelectionBox.style.top = `${dragStart.y}px`;
+      pvSelectionBox.style.width = "0px";
+      pvSelectionBox.style.height = "0px";
+      pvSelectionBox.classList.remove("hidden");
+    });
+
+    pvCanvas.addEventListener("pointermove", (e) => {
+      if (!isCropSelectMode || !dragStart) return;
+      const rect = pvCanvas.getBoundingClientRect();
+      const curX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+      const curY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+      const left = Math.min(dragStart.x, curX);
+      const top = Math.min(dragStart.y, curY);
+      const width = Math.abs(curX - dragStart.x);
+      const height = Math.abs(curY - dragStart.y);
+      pvSelectionBox.style.left = `${left}px`;
+      pvSelectionBox.style.top = `${top}px`;
+      pvSelectionBox.style.width = `${width}px`;
+      pvSelectionBox.style.height = `${height}px`;
+    });
+
+    pvCanvas.addEventListener("pointerup", async (e) => {
+      if (!isCropSelectMode || !dragStart) return;
+      const rect = pvCanvas.getBoundingClientRect();
+      const endX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+      const endY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+      const leftPx = Math.min(dragStart.x, endX);
+      const topPx = Math.min(dragStart.y, endY);
+      const widthPx = Math.abs(endX - dragStart.x);
+      const heightPx = Math.abs(endY - dragStart.y);
+      dragStart = null;
+      pvSelectionBox.classList.add("hidden");
+
+      if (widthPx < 20 || heightPx < 20) {
+        showToast("영역을 조금 더 크게 드래그해 주세요.");
+        return;
+      }
+
+      const area = currentCropArea || { x: 0, y: 0, w: currentViewport1.width, h: currentViewport1.height };
+      const newCrop = {
+        x: area.x + (leftPx / rect.width) * area.w,
+        y: area.y + (topPx / rect.height) * area.h,
+        w: (widthPx / rect.width) * area.w,
+        h: (heightPx / rect.height) * area.h
+      };
+
+      const cropKey = `${currentViewGroup.page}_${currentViewGroup.problemNum}`;
+      customCrops[cropKey] = newCrop;
+      localStorage.setItem(CUSTOM_CROPS_KEY, JSON.stringify(customCrops));
+
+      isCropSelectMode = false;
+      pvCanvas.style.cursor = "default";
+      currentViewMode = "auto";
+      updateModeButtonsUI();
+      showToast(`p.${currentViewGroup.page} ${currentViewGroup.problemNum}번 영역이 저장되었습니다!`);
+      await renderProblemView();
+    });
+
+    // =========================================================================
+    // 8-B. 전자칠판 모눈 배경 & 두 손가락 핀치 줌 (왼쪽 상단 기준)
+    // =========================================================================
+    let isGridOn = false;
+    let problemZoomScale = 1;
+    const pinchPointers = new Map();
+    let pinchStartDist = null;
+    let pinchStartScale = 1;
+
+    function setProblemZoom(scale) {
+      problemZoomScale = Math.max(0.4, Math.min(2.5, scale));
+      pvProblemAnchor.style.transform = `scale(${problemZoomScale})`;
+      pvZoomBadge.textContent = `🔍 ${Math.round(problemZoomScale * 100)}%`;
+    }
+
+    function getPinchDistance() {
+      const pts = Array.from(pinchPointers.values());
+      if (pts.length < 2) return 0;
+      return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    }
+
+    pvProblemAnchor.addEventListener("pointerdown", (e) => {
+      if (isCropSelectMode) return;
+      pinchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinchPointers.size === 2) {
+        pinchStartDist = getPinchDistance();
+        pinchStartScale = problemZoomScale;
+      }
+    });
+
+    pvProblemAnchor.addEventListener("pointermove", (e) => {
+      if (isCropSelectMode || !pinchPointers.has(e.pointerId)) return;
+      pinchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinchPointers.size === 2 && pinchStartDist > 10) {
+        const dist = getPinchDistance();
+        setProblemZoom(pinchStartScale * (dist / pinchStartDist));
+      }
+    });
+
+    const clearPinchPointer = (e) => {
+      pinchPointers.delete(e.pointerId);
+      if (pinchPointers.size < 2) {
+        pinchStartDist = null;
+      }
+    };
+    pvProblemAnchor.addEventListener("pointerup", clearPinchPointer);
+    pvProblemAnchor.addEventListener("pointercancel", clearPinchPointer);
+
+    // PC 마우스 휠 확대/축소 및 배지 클릭 시 100% 초기화
+    pvProblemAnchor.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.1 : -0.1;
+      setProblemZoom(problemZoomScale + delta);
+    }, { passive: false });
+
+    pvZoomBadge.style.cursor = "pointer";
+    pvZoomBadge.addEventListener("click", () => setProblemZoom(1));
+
+    boardGridBtn.addEventListener("click", () => {
+      isGridOn = !isGridOn;
+      if (isGridOn) {
+        smartboardStage.style.backgroundImage =
+          "linear-gradient(to right, rgba(148,163,184,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.22) 1px, transparent 1px)";
+        smartboardStage.style.backgroundSize = "28px 28px";
+        boardGridBtn.classList.add("bg-indigo-600");
+      } else {
+        smartboardStage.style.backgroundImage = "none";
+        boardGridBtn.classList.remove("bg-indigo-600");
+      }
+    });
+
+    pdfFileInput.addEventListener("change", (e) => loadPdfFile(e.target.files[0]));
+    modalPdfFileInput.addEventListener("change", (e) => loadPdfFile(e.target.files[0]));
+    pvCloseBtn.addEventListener("click", closeProblemViewer);
+    problemViewModal.addEventListener("click", (e) => {
+      if (e.target === problemViewModal) closeProblemViewer();
+    });
+
+    pvModeBtns.forEach(btn => {
+      btn.addEventListener("click", async () => {
+        currentViewMode = btn.dataset.mode;
+        updateModeButtonsUI();
+        await renderProblemView();
+      });
+    });
+
+    pvPrevPageBtn.addEventListener("click", async () => {
+      if (!pdfDoc || currentPdfPage <= 1) return;
+      currentPdfPage -= 1;
+      await renderProblemView();
+    });
+
+    pvNextPageBtn.addEventListener("click", async () => {
+      if (!pdfDoc || currentPdfPage >= pdfDoc.numPages) return;
+      currentPdfPage += 1;
+      await renderProblemView();
+    });
+
+    function adjustPdfOffset(delta) {
+      pdfPageOffset += delta;
+      localStorage.setItem(PDF_OFFSET_KEY, String(pdfPageOffset));
+      pvOffsetText.textContent = pdfPageOffset >= 0 ? `+${pdfPageOffset}` : `${pdfPageOffset}`;
+      if (currentViewGroup && pdfDoc) {
+        currentPdfPage = clampPdfPage(currentViewGroup.page + pdfPageOffset);
+        renderProblemView();
+      }
+    }
+
+    pvOffsetMinusBtn.addEventListener("click", () => adjustPdfOffset(-1));
+    pvOffsetPlusBtn.addEventListener("click", () => adjustPdfOffset(1));
+
+    pvSolveBtn.addEventListener("click", async () => {
+      if (!currentViewGroup) return;
+      pvSolveBtn.disabled = true;
+      try {
+        const nextSolved = !currentViewGroup.isSolved;
+        await updateSolvedInBatches(currentViewGroup.docIds, nextSolved);
+        currentViewGroup.isSolved = nextSolved;
+        pvSolveBtn.textContent = nextSolved ? "✓ 완료됨" : "✓ 풀이 완료";
+        showToast(nextSolved ? "풀이 완료 처리되었습니다." : "풀이 완료가 해제되었습니다.");
+        closeProblemViewer();
+      } catch {
+        showToast("상태 변경 중 오류가 발생했습니다.");
+      } finally {
+        pvSolveBtn.disabled = false;
+      }
+    });
+
+    // =========================================================================
+    // 9. 비밀번호 재입력 삭제 확인 모달
     // =========================================================================
     function openDeleteModal({ title, message, onConfirm }) {
       deleteModalTitle.textContent = title;
@@ -1474,13 +2192,14 @@
       if (e.target === deleteModal) closeDeleteModal();
     });
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && !deleteModal.classList.contains("hidden")) {
-        closeDeleteModal();
+      if (e.key === "Escape") {
+        if (!deleteModal.classList.contains("hidden")) closeDeleteModal();
+        if (!problemViewModal.classList.contains("hidden")) closeProblemViewer();
       }
     });
 
     // =========================================================================
-    // 9. 선생님별 전체 엑셀 다운로드 (SheetJS)
+    // 10. 선생님별 전체 엑셀 다운로드 (SheetJS)
     // =========================================================================
     function downloadTeacherExcel() {
       if (typeof window.XLSX === "undefined") {
@@ -1509,7 +2228,6 @@
         return;
       }
 
-      // 시트 1: 질문집계 (페이지 오름차순 -> 문항번호 오름차순)
       const aggregated = aggregateQuestions(teacherItems).sort((a, b) => {
         if (a.page !== b.page) return a.page - b.page;
         return a.problemNum - b.problemNum;
@@ -1529,7 +2247,6 @@
         };
       });
 
-      // 시트 2: 원본내역 (등록일시 최신순, null createdAt은 "저장 중" 처리)
       const rawRows = teacherItems.map(item => ({
         "반": `${Number(item.classNum)}반`,
         "페이지": Number(item.page),
@@ -1542,20 +2259,8 @@
       const wsSummary = window.XLSX.utils.json_to_sheet(summaryRows);
       const wsRaw = window.XLSX.utils.json_to_sheet(rawRows);
 
-      wsSummary["!cols"] = [
-        { wch: 10 },
-        { wch: 12 },
-        { wch: 12 },
-        { wch: 24 },
-        { wch: 12 }
-      ];
-      wsRaw["!cols"] = [
-        { wch: 8 },
-        { wch: 10 },
-        { wch: 12 },
-        { wch: 12 },
-        { wch: 22 }
-      ];
+      wsSummary["!cols"] = [{ wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 24 }, { wch: 12 }];
+      wsRaw["!cols"] = [{ wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 22 }];
 
       window.XLSX.utils.book_append_sheet(workbook, wsSummary, "질문집계");
       window.XLSX.utils.book_append_sheet(workbook, wsRaw, "원본내역");
@@ -1570,7 +2275,7 @@
     }
 
     // =========================================================================
-    // 10. 이벤트 연결 및 초기 실행
+    // 11. 이벤트 연결 및 초기 실행
     // =========================================================================
     document.getElementById("goStudentBtn").addEventListener("click", () => {
       resetStudentForm();
@@ -1613,10 +2318,10 @@
     sortSelect.addEventListener("change", renderQuestionList);
     downloadExcelBtn.addEventListener("click", downloadTeacherExcel);
 
-    // 초기 실행: 마감 설정 실시간 구독 + 10초 주기 타이머 + 반 선택 버튼 초기화
     startDeadlineListener();
     startDeadlineClock();
     renderClassButtons();
+    tryAutoLoadHostedPdf();
   </script>
 </body>
 </html>
