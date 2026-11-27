@@ -160,16 +160,16 @@
         </div>
       </div>
 
-      <!-- 수업용 올림포스 PDF 연결 바 -->
-      <div class="bg-sky-50 border border-sky-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+      <!-- 수업용 올림포스 문제지 연결 상태 바 -->
+      <div id="pdfConnectBar" class="bg-sky-50 border border-sky-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3 min-w-0">
           <span class="text-2xl shrink-0">📚</span>
           <div class="min-w-0">
-            <div class="text-base font-bold text-sky-950">수업용 올림포스 문제지 연결</div>
-            <div id="pdfStatusText" class="text-sm text-sky-700 truncate">PDF를 선택하면 질문을 눌렀을 때 해당 문제만 바로 뜹니다.</div>
+            <div class="text-base font-bold text-sky-950" id="pdfBarTitle">수업용 올림포스 문제지</div>
+            <div id="pdfStatusText" class="text-sm text-sky-700 truncate">문제 이미지 확인 중...</div>
           </div>
         </div>
-        <label class="shrink-0 cursor-pointer px-4 py-2.5 bg-sky-600 hover:bg-sky-700 active:scale-[0.98] text-white text-sm sm:text-base font-bold rounded-xl shadow-sm transition">
+        <label id="pdfPickLabel" class="shrink-0 cursor-pointer px-4 py-2.5 bg-sky-600 hover:bg-sky-700 active:scale-[0.98] text-white text-sm sm:text-base font-bold rounded-xl shadow-sm transition">
           문제지 PDF 선택
           <input id="pdfFileInput" type="file" accept="application/pdf" class="hidden" />
         </label>
@@ -299,8 +299,8 @@
       <!-- 왼쪽 상단 고정 문제 영역 (핀치줌 기준점: top left) -->
       <div id="pvProblemAnchor" style="transform-origin: top left;" class="absolute top-3 left-3 z-10 max-w-[78vw] max-h-[80vh] flex flex-col items-start touch-none">
         <div id="pvEmptyBox" class="hidden text-center py-6 px-5 bg-slate-50 rounded-2xl border border-slate-300 shadow-md max-w-sm">
-          <p class="text-base font-bold text-slate-800">문제지 PDF를 연결해 주세요</p>
-          <p class="text-xs text-slate-500 mt-1">연결하면 왼쪽 상단에 문제만 뜨고 나머지 공간에 바로 풀이할 수 있습니다.</p>
+          <p id="pvEmptyTitle" class="text-base font-bold text-slate-800">해당 문제 이미지를 찾지 못했습니다</p>
+          <p id="pvEmptyDesc" class="text-xs text-slate-500 mt-1">78~151쪽 범위의 문제인지, index.html과 같은 폴더에 problems 폴더가 있는지 확인하거나 PDF를 선택해 주세요.</p>
           <label class="inline-block mt-3 cursor-pointer px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-sm transition">
             📚 올림포스 PDF 선택
             <input id="modalPdfFileInput" type="file" accept="application/pdf" class="hidden" />
@@ -501,6 +501,9 @@
     const questionList = document.getElementById("questionList");
 
     // PDF 모달 DOM
+    const pdfConnectBar = document.getElementById("pdfConnectBar");
+    const pdfBarTitle = document.getElementById("pdfBarTitle");
+    const pdfPickLabel = document.getElementById("pdfPickLabel");
     const pdfFileInput = document.getElementById("pdfFileInput");
     const modalPdfFileInput = document.getElementById("modalPdfFileInput");
     const pdfStatusText = document.getElementById("pdfStatusText");
@@ -1583,7 +1586,38 @@
     }
 
     async function tryAutoLoadHostedPdf() {
-      if (!window.location.protocol.startsWith("http")) return;
+      // 1) index.html과 같은 폴더(./p120_25.jpg) 또는 ./problems/ 폴더에 이미지가 있는지 확인
+      const hasStaticImages = await new Promise((resolve) => {
+        const urls = ["./p120_25.jpg", "./problems/p120_25.jpg"];
+        let i = 0;
+        const next = () => {
+          if (i >= urls.length) { resolve(false); return; }
+          const img = new Image();
+          img.onload = () => resolve(true);
+          img.onerror = () => next();
+          img.src = urls[i++];
+        };
+        next();
+      });
+
+      if (hasStaticImages) {
+        pdfConnectBar.className = "bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3";
+        pdfBarTitle.className = "text-base font-bold text-emerald-950";
+        pdfBarTitle.textContent = "올림포스 문제 이미지 연결됨";
+        pdfStatusText.className = "text-sm text-emerald-700 truncate";
+        pdfStatusText.textContent = "78~151쪽(170문항) 질문을 누르면 즉시 뜹니다.";
+        pdfPickLabel.className = "shrink-0 cursor-pointer px-3 py-1.5 bg-white hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-xs sm:text-sm font-semibold rounded-xl transition";
+        pdfPickLabel.firstChild.textContent = "추가 PDF 선택 ";
+        return;
+      }
+
+      if (!window.location.protocol.startsWith("http")) {
+        pdfStatusText.textContent = "PDF를 선택하거나 같은 위치에 문제 이미지를 두세요.";
+        return;
+      }
+
+      pdfStatusText.textContent = "문제 이미지를 찾지 못했습니다. (index.html과 같은 위치인지 확인 또는 PDF 선택)";
+
       if (typeof window.pdfjsLib === "undefined") return;
       try {
         const res = await fetch("./workbook.pdf", { method: "HEAD" });
@@ -1630,9 +1664,11 @@
       problemViewModal.classList.add("hidden");
     }
 
-    // 1) 미리 잘라둔 문제 이미지(./problems/p42_15.jpg 또는 .png)가 있으면 최우선으로 즉시 표시
+    // 1) 미리 잘라둔 문제 이미지(./p42_15.jpg 또는 ./problems/p42_15.jpg)가 있으면 최우선으로 즉시 표시
     function tryLoadStaticProblemImage(page, probNum) {
       const candidates = [
+        `./p${page}_${probNum}.jpg`,
+        `./p${page}_${probNum}.png`,
         `./problems/p${page}_${probNum}.jpg`,
         `./problems/p${page}_${probNum}.png`
       ];
